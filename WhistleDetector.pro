@@ -7,10 +7,8 @@ VERSION = 0.1.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 DESTDIR = build
 
-win32 {
-    LIBS += $$(USERPROFILE)/scoop/apps/miniconda3/current/Library/bin/fftw3.dll
-    INCLUDEPATH += $$(USERPROFILE)/scoop/apps/miniconda3/current/Library/include/
-}
+LIBS += -L"$$(CONDA_PREFIX)/libs/" -lfftw3
+INCLUDEPATH += $$(CONDA_PREFIX)/include/
 
 CONFIG(release, debug|release) {
     OBJECTS_DIR = release/obj
