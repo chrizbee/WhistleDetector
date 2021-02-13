@@ -23,7 +23,7 @@ namespace config {
 	static const double deltaF = 150;		// Frequencies +- this is ok
 	static const double deltaT = 100;		// Pause +- this is ok
 	static const QList<double> freqs = {
-		1800, 1400, 1800, 1400, 1800, 1400
+		1800, 1400
 	};
 
 	// MQTT client settings

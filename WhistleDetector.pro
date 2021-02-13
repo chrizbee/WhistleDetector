@@ -7,7 +7,7 @@ VERSION = 0.1.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 DESTDIR = build
 
-LIBS += -L"$$(CONDA_PREFIX)/libs/" -lfftw3
+LIBS += -L"$$(CONDA_PREFIX)/lib/" -lfftw3
 INCLUDEPATH += $$(CONDA_PREFIX)/include/
 
 CONFIG(release, debug|release) {

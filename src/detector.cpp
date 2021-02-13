@@ -43,13 +43,7 @@ Detector::Detector(QObject *parent) :
 	// Create audio input with format and start recording
 	input_ = new QAudioInput(format, this);
 	device_ = input_->start();
-
-	// Fourier precalculations
-	f.periodSize = input_->periodSize();
-	f.freqs = xt::fftw::rfftfreq(f.periodSize, 1.0 / config::sampleRate);
-	f.lowerIndex = xt::argmin(xt::abs(f.freqs - config::cutoffLower))();
-	f.upperIndex = xt::argmin(xt::abs(f.freqs - config::cutoffUpper))();
-	f.freqs = xt::view(f.freqs, xt::range(f.lowerIndex, f.upperIndex + 1));
+	precalculate(input_->periodSize());
 
 	// Configure timer
 	timer_.setSingleShot(true);
@@ -64,6 +58,16 @@ void Detector::setEnabled(bool enabled)
 {
 	// Set enabled
 	enabled_ = enabled;
+}
+
+void Detector::precalculate(int periodSize)
+{
+	// Fourier precalculations
+	f.periodSize = periodSize;
+	f.freqs = xt::fftw::rfftfreq(f.periodSize, 1.0 / config::sampleRate);
+	f.lowerIndex = xt::argmin(xt::abs(f.freqs - config::cutoffLower))();
+	f.upperIndex = xt::argmin(xt::abs(f.freqs - config::cutoffUpper))();
+	f.freqs = xt::view(f.freqs, xt::range(f.lowerIndex, f.upperIndex + 1));
 }
 
 void Detector::detect(double freq)
@@ -88,8 +92,18 @@ void Detector::detect(double freq)
 
 void Detector::onBlockReady()
 {
+	// Somehow periodSize() isn't the same as bytesReady() on Linux (Odroid C2)
+	// Redo the precalculations here if it's not the same
+	uint byteCount = input_->bytesReady();
+	if (byteCount != f.periodSize) {
+		qWarning() << "ByteCount is not the same as PeriodSize!"
+				   << "\nByteCount: " << byteCount
+				   << "\nPeriodSize: " << f.periodSize
+				   << "\nActualDataSize: " << device_->readAll().size();
+		precalculate(byteCount);
+
 	// Check if can read
-	if (input_->bytesReady() == f.periodSize) {
+	} else if (input_->bytesReady() == f.periodSize) {
 
 		// Read a block of samples
 		arrc cdata = arrc::from_shape({f.periodSize});

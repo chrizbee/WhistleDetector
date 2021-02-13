@@ -11,7 +11,7 @@ Get started by building the code from source (for *Windows*, *Linux* and *Mac*).
 
 To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt` and `xtensor-fftw`. If you are going to build on Windows, you need to make sure, that your `PATH` variable contains paths to *Qt* and *MinGW* / *MSVC* toolsets (*bin* folder).
 
-Install `QMqtt` module
+Install `QMqtt` module.
 
 ```bash
 git clone https://github.com/emqtt/qmqtt.git
@@ -20,14 +20,14 @@ qmake
 sudo make install # mingw32-make install on Windows
 ```
 
-Install `miniconda` on ARM
+Install `miniconda` on ARM.
 
 ```bash
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash Miniforge3-Linux-aarch64.sh # reboot after this
 ```
 
-Install `xtensor-fftw` and its dependencies
+Install `xtensor-fftw` and its dependencies.
 
 ```bash
 conda install -c conda-forge xtensor-fftw
@@ -35,7 +35,7 @@ conda install -c conda-forge xtensor-fftw
 
 ### Building
 
-Clone the GitHub repository
+Clone the GitHub repository.
 ```bash
 git clone https://github.com/chrizbee/WhistleDetector
 cd WhistleDetector

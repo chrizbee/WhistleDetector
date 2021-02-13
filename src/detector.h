@@ -16,6 +16,7 @@ public:
 	void setEnabled(bool enabled);
 
 protected:
+	void precalculate(int periodSize);
 	void detect(double freq);
 
 private slots:
