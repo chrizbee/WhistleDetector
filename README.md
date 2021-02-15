@@ -41,7 +41,14 @@ git clone https://github.com/chrizbee/WhistleDetector
 cd WhistleDetector
 ```
 
+Edit config.h to use your own configuration and MQTT topics.
+
+```bash
+nano src/config.h
+```
+
 Build it using `qmake` and `make`. Make sure `CONDA_PREFIX` is set before building.
+
 ```bash
 qmake
 make

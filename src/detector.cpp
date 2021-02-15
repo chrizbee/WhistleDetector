@@ -39,7 +39,7 @@ Detector::Detector(QObject *parent) :
 	// Check if format is supported
 	QAudioDeviceInfo info = QAudioDeviceInfo::defaultInputDevice();
 	qInfo() << "Using Device" << info.deviceName();
-	if (!info.isFormatSupported(format) || config::sampleSize > 16) {
+	if (!info.isFormatSupported(format)) {
 		qWarning() << "Format not supported - what is supported:";
 		qInfo() << "Byte Order     :" << info.supportedByteOrders();
 		qInfo() << "Channel Counts :" << info.supportedChannelCounts();
@@ -47,7 +47,6 @@ Detector::Detector(QObject *parent) :
 		qInfo() << "Sample Rates   :" << info.supportedSampleRates();
 		qInfo() << "Sample Sizes   :" << info.supportedSampleSizes();
 		qInfo() << "Sample Types   :" << info.supportedSampleTypes();
-		qApp->quit();
 	}
 
 
