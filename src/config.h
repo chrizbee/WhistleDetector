@@ -7,8 +7,8 @@
 namespace config {
 
 	// Audio input settings
-	static const uint sampleSize = 16;      // 8 bit per sample
-	static const uint sampleRate = 44100;   // 44100 samples per second
+	static const uint sampleSize = 16;      // Bits per sample
+	static const uint sampleRate = 44100;   // Samples per second
 
 	// Measure limits
 	static const double cutoffMag = 300;    // Cutoff magnitude
