@@ -15,11 +15,11 @@ public:
 	Detector(QObject *parent = nullptr);
 	void setEnabled(bool enabled);
 
-protected:
-	void detect(double freq);
-
 private slots:
 	void onBlockReady();
+
+protected:
+	void detect(double freq);
 
 signals:
 	void patternDetected();

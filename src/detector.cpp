@@ -2,21 +2,25 @@
 #include "config.h"
 #include <QIODevice>
 #include <QAudioInput>
+#include <QCoreApplication>
 #include <xtensor/xview.hpp>
 #include <xtensor/xsort.hpp>
 #include <xtensor/xarray.hpp>
 #include <xtensor-fftw/basic.hpp>
 #include <xtensor-fftw/helper.hpp>
+#include <cmath>
 #include <QDebug>
 
-typedef xt::xarray<char> arrc;
 typedef xt::xarray<double> arrd;
 
 static struct {
 	arrd freqs;
+	arrd window;
 	uint lowerIndex;
 	uint upperIndex;
 	uint periodSize;
+	uint bytesPerSample;
+	uint sampleCount;
 } f;
 
 Detector::Detector(QObject *parent) :
@@ -26,19 +30,26 @@ Detector::Detector(QObject *parent) :
 {
 	// Create format
 	QAudioFormat format;
+	format.setChannelCount(1);
 	format.setCodec("audio/pcm");
 	format.setSampleRate(config::sampleRate);
 	format.setSampleSize(config::sampleSize);
-	format.setChannelCount(config::channelCount);
 	format.setSampleType(QAudioFormat::SampleType::SignedInt);
 
-	// Check format
+	// Check if format is supported
 	QAudioDeviceInfo info = QAudioDeviceInfo::defaultInputDevice();
-	qInfo() << "Using Device" << info.deviceName() << ".";
-	if (!info.isFormatSupported(format)) {
-		qCritical() << "Format not supported - using nearest format";
-		format = info.nearestFormat(format);
+	qInfo() << "Using Device" << info.deviceName();
+	if (!info.isFormatSupported(format) || config::sampleSize > 16) {
+		qWarning() << "Format not supported - what is supported:";
+		qInfo() << "Byte Order     :" << info.supportedByteOrders();
+		qInfo() << "Channel Counts :" << info.supportedChannelCounts();
+		qInfo() << "Codecs         :" << info.supportedCodecs();
+		qInfo() << "Sample Rates   :" << info.supportedSampleRates();
+		qInfo() << "Sample Sizes   :" << info.supportedSampleSizes();
+		qInfo() << "Sample Types   :" << info.supportedSampleTypes();
+		qApp->quit();
 	}
+
 
 	// Create audio input with format and start recording
 	input_ = new QAudioInput(format, this);
@@ -46,10 +57,15 @@ Detector::Detector(QObject *parent) :
 
 	// Fourier precalculations
 	f.periodSize = input_->periodSize();
-	f.freqs = xt::fftw::rfftfreq(f.periodSize, 1.0 / config::sampleRate);
+	f.bytesPerSample = format.sampleSize() / 8;
+	f.sampleCount = f.periodSize / f.bytesPerSample;
+	f.freqs = xt::fftw::rfftfreq(f.sampleCount, 1.0 / config::sampleRate);
 	f.lowerIndex = xt::argmin(xt::abs(f.freqs - config::cutoffLower))();
 	f.upperIndex = xt::argmin(xt::abs(f.freqs - config::cutoffUpper))();
 	f.freqs = xt::view(f.freqs, xt::range(f.lowerIndex, f.upperIndex + 1));
+	f.window = arrd::from_shape({f.sampleCount});
+	for (uint i = 0; i < f.sampleCount; ++i)
+		f.window(i) = 0.5 * (1 - cos(2 * M_PI * i / (f.sampleCount - 1))); // Hanning
 
 	// Configure timer
 	timer_.setSingleShot(true);
@@ -64,6 +80,44 @@ void Detector::setEnabled(bool enabled)
 {
 	// Set enabled
 	enabled_ = enabled;
+}
+
+void Detector::onBlockReady()
+{
+	// Check if can read
+	while (input_->bytesReady() >= f.periodSize) {
+
+		// Read a block of samples
+		arrd data = arrd::from_shape({f.sampleCount});
+		QByteArray byteData = device_->read(f.periodSize);
+		const char *d = byteData.constData();
+
+		// Continue if enabled
+		if (enabled_) {
+
+			// Convert bytes to double and apply window function
+			// TODO: Endianness!
+			for (uint i = 0; i < f.sampleCount; ++i) {
+				uint64_t val = static_cast<uint64_t>(*d);
+				for (uint j = 1; j < f.bytesPerSample; ++j)
+					val |= *(d + j) << 8;
+				data(i) = static_cast<double>(val) * f.window(i);
+				d += f.bytesPerSample;
+			}
+
+			// Calculate FFT and use absolute magnitudes only
+			arrd mags = xt::abs(xt::fftw::rfft(data));
+			mags = xt::view(mags, xt::range(f.lowerIndex, f.upperIndex + 1));
+
+			// Get maximum
+			uint maxIdx = xt::argmax(mags)();
+			double mag = mags(maxIdx);
+
+			// Check for pattern only if magnitude is high enough
+			if (mag > config::cutoffMag)
+				detect(f.freqs(maxIdx));
+		}
+	}
 }
 
 void Detector::detect(double freq)
@@ -83,31 +137,5 @@ void Detector::detect(double freq)
 			timer_.stop();
 			emit patternDetected();
 		} else timer_.start();
-	}
-}
-
-void Detector::onBlockReady()
-{
-	// Check if can read
-	while (input_->bytesReady() >= f.periodSize) {
-
-		// Read a block of samples
-		arrc cdata = arrc::from_shape({f.periodSize});
-		device_->read(static_cast<char*>(cdata.data()), f.periodSize);
-		arrd data = xt::cast<double>(cdata);
-
-		// Do FFT only if enabled
-		if (enabled_) {
-			arrd mags = xt::abs(xt::fftw::rfft(data));
-			mags = xt::view(mags, xt::range(f.lowerIndex, f.upperIndex + 1));
-
-			// Get maximum
-			uint maxIdx = xt::argmax(mags)();
-			double mag = mags(maxIdx);
-
-			// Check for pattern only if magnitude is high enough
-			if (mag > config::cutoffMag)
-				detect(f.freqs(maxIdx));
-		}
 	}
 }
