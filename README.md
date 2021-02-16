@@ -9,31 +9,9 @@ Get started by building the code from source (for *Windows*, *Linux* and *Mac*).
 
 ### Prerequisites
 
-To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt` and `xtensor-fftw`. If you are going to build on Windows, you need to make sure, that your `PATH` variable contains paths to *Qt* and *MinGW* / *MSVC* toolsets (*bin* folder).
+To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt` and `xtensor-fftw` (see links below). If you are going to build on Windows, you need to make sure, that your `PATH` variable contains paths to *Qt* and *MinGW* / *MSVC* toolsets (*bin* folder). For a detailed guide on how to install these on Ubuntu (ARM) see [setup_arm.md](setup_arm.md).
 
-Install `QMqtt` module.
-
-```bash
-git clone https://github.com/emqtt/qmqtt.git
-cd qmqtt
-qmake
-sudo make install # mingw32-make install on Windows
-```
-
-Install `miniconda` on ARM.
-
-```bash
-wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
-bash Miniforge3-Linux-aarch64.sh # reboot after this
-```
-
-Install `xtensor-fftw` and its dependencies.
-
-```bash
-conda install -c conda-forge xtensor-fftw
-```
-
-### Building
+## Building
 
 Clone the GitHub repository.
 ```bash
@@ -41,7 +19,7 @@ git clone https://github.com/chrizbee/WhistleDetector
 cd WhistleDetector
 ```
 
-Edit config.h to use your own configuration and MQTT topics.
+Edit `config.h` to use your own configuration and MQTT topics.
 
 ```bash
 nano src/config.h
