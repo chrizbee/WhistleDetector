@@ -1,10 +1,14 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef SETTINGS_H
+#define SETTINGS_H
 
+#include <QMap>
+#include <QVariant>
 #include <QStringList>
 #include <QHostAddress>
 
-namespace config {
+#define ConfM Settings::instance()
+
+namespace defaults {
 
 	// Audio input settings
 	static const uint sampleSize = 16;      // Bits per sample
@@ -16,8 +20,6 @@ namespace config {
 	static const double cutoffUpper = 2000; // Upper cutoff frequency
 
 	// Frequencies and tolerances
-	static const double f1 = 1800;          // First freqency
-	static const double f2 = 1400;          // Second freqency
 	static const double pause = 300;        // Pause between two tones in ms
 	static const double deltaF = 150;       // Frequencies +- this is ok
 	static const double deltaT = 100;       // Pause +- this is ok
@@ -37,4 +39,20 @@ namespace config {
 	};
 }
 
-#endif // CONFIG_H
+class Settings {
+public:
+	static Settings &instance();
+	template <typename T>
+	T value(const QString &key, const QVariant &defaultValue = QVariant()) const {
+		return config.value(key, defaultValue).value<T>(); }
+
+protected:
+	Settings();
+	Settings(const Settings &) = delete;
+	void operator=(const Settings &) = delete;
+
+private:
+	QMap<QString, QVariant> config;
+};
+
+#endif // SETTINGS_H

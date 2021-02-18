@@ -32,4 +32,6 @@ private:
 	uint i_;
 };
 
+QList<double> toDouble(const QStringList &stringList);
+
 #endif // DETECTOR_H

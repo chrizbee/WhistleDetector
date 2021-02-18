@@ -1,5 +1,5 @@
 #include "detector.h"
-#include "config.h"
+#include "settings.h"
 #include <QIODevice>
 #include <QAudioInput>
 #include <QCoreApplication>
@@ -32,8 +32,8 @@ Detector::Detector(QObject *parent) :
 	QAudioFormat format;
 	format.setChannelCount(1);
 	format.setCodec("audio/pcm");
-	format.setSampleRate(config::sampleRate);
-	format.setSampleSize(config::sampleSize);
+	format.setSampleRate(ConfM.value<int>("sampleRate"));
+	format.setSampleSize(ConfM.value<int>("sampleSize"));
 	format.setSampleType(QAudioFormat::SampleType::SignedInt);
 
 	// Check if format is supported
@@ -58,9 +58,9 @@ Detector::Detector(QObject *parent) :
 	f.periodSize = input_->periodSize();
 	f.bytesPerSample = format.sampleSize() / 8;
 	f.sampleCount = f.periodSize / f.bytesPerSample;
-	f.freqs = xt::fftw::rfftfreq(f.sampleCount, 1.0 / config::sampleRate);
-	f.lowerIndex = xt::argmin(xt::abs(f.freqs - config::cutoffLower))();
-	f.upperIndex = xt::argmin(xt::abs(f.freqs - config::cutoffUpper))();
+	f.freqs = xt::fftw::rfftfreq(f.sampleCount, 1.0 / format.sampleRate());
+	f.lowerIndex = xt::argmin(xt::abs(f.freqs - ConfM.value<int>("cutoffLower")))();
+	f.upperIndex = xt::argmin(xt::abs(f.freqs - ConfM.value<int>("cutoffUpper")))();
 	f.freqs = xt::view(f.freqs, xt::range(f.lowerIndex, f.upperIndex + 1));
 	f.window = arrd::from_shape({f.sampleCount});
 	for (uint i = 0; i < f.sampleCount; ++i)
@@ -68,7 +68,7 @@ Detector::Detector(QObject *parent) :
 
 	// Configure timer
 	timer_.setSingleShot(true);
-	timer_.setInterval(config::pause + config::deltaT);
+	timer_.setInterval(ConfM.value<int>("pause") + ConfM.value<int>("deltaT"));
 
 	// Connect signals
 	connect(&timer_, &QTimer::timeout, [this]() { i_ = 0; });
@@ -83,6 +83,9 @@ void Detector::setEnabled(bool enabled)
 
 void Detector::onBlockReady()
 {
+	// Static config
+	static const int cutoffMag = ConfM.value<int>("cutoffMag");
+
 	// Check if can read
 	while (input_->bytesReady() >= f.periodSize) {
 
@@ -96,6 +99,7 @@ void Detector::onBlockReady()
 
 			// Convert bytes to double and apply window function
 			// TODO: Endianness!
+			// TODO: This is not working properly yet - the magnitude is waaaay too high...
 			for (uint i = 0; i < f.sampleCount; ++i) {
 				uint64_t val = static_cast<uint64_t>(*d);
 				for (uint j = 1; j < f.bytesPerSample; ++j)
@@ -113,22 +117,29 @@ void Detector::onBlockReady()
 			double mag = mags(maxIdx);
 
 			// Check for pattern only if magnitude is high enough
-			if (mag > config::cutoffMag)
+			if (mag > cutoffMag) {
+				qDebug() << mag << f.freqs(maxIdx);
 				detect(f.freqs(maxIdx));
+			}
 		}
 	}
 }
 
 void Detector::detect(double freq)
 {
+	// Static config
+	static const int deltaF = ConfM.value<int>("deltaF");
+	static const int deltaT = ConfM.value<int>("deltaT");
+	static const QList<double> freqs = toDouble(ConfM.value<QStringList>("freqs"));
+
 	// Check for index out of range
-	uint cnt = config::freqs.count();
+	uint cnt = freqs.count();
 	if (i_ >= cnt)
 		return;
 
 	// Check for correct frequency and pause
-	if ((abs(freq - config::freqs[i_]) <= config::deltaF) &&
-		(i_ == 0 || timer_.remainingTime() <= config::deltaT * 2)) {
+	if ((abs(freq - freqs[i_]) <= deltaF) &&
+		(i_ == 0 || timer_.remainingTime() <= deltaT * 2)) {
 
 		// Check if end of pattern is reached
 		if (++i_ >= cnt) {
@@ -137,4 +148,13 @@ void Detector::detect(double freq)
 			emit patternDetected();
 		} else timer_.start();
 	}
+}
+
+QList<double> toDouble(const QStringList &stringList)
+{
+	// Convert QStringList to QList<double>
+	QList<double> out;
+	for (const QString &str : stringList)
+		out.append(str.toDouble());
+	return out;
 }

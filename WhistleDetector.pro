@@ -10,6 +10,12 @@ DESTDIR = build
 LIBS += -L"$$(CONDA_PREFIX)/lib/" -lfftw3
 INCLUDEPATH += $$(CONDA_PREFIX)/include/
 
+copyconfig.commands = $(COPY_FILE) $$PWD/config.ini $$DESTDIR
+first.depends = $(first) copyconfig
+export(first.depends)
+export(copyconfig.commands)
+QMAKE_EXTRA_TARGETS += first copyconfig
+
 CONFIG(release, debug|release) {
     OBJECTS_DIR = release/obj
     MOC_DIR = release/moc
@@ -26,13 +32,14 @@ CONFIG(debug, debug|release) {
 
 HEADERS += \
     src/application.h \
-    src/config.h \
-    src/detector.h
+    src/detector.h \
+    src/settings.h
 
 SOURCES += \
     src/application.cpp \
     src/detector.cpp \
-    src/main.cpp
+    src/main.cpp \
+    src/settings.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
