@@ -19,6 +19,7 @@ Add your user if it doesn't exist already.
 
 ```bash
 sudo adduser chrizbee sudo
+sudo usermod -aG sudo,audio chrizbee
 ```
 
 ## Install dependencies
@@ -31,11 +32,15 @@ I wasn't able to use Alsa with the official Qt-Mulimedia packages since they wer
 sudo apt install qt5-default qtmultimedia5-dev libqt5multimedia5-plugins pulseaudio git libfftw3-dev
 ```
 
-Enable `pulseaudio` service and set default source.
+Enable the `pulseaudio` service and reboot.
 
 ```bash
 systemctl --user enable pulseaudio
-sudo usermod -aG audio chrizbee
+```
+
+Set the default `pulseaudio` source.
+
+```bash
 pacmd list-sources # Remember the index
 pacmd set-default-source <index>
 ```
@@ -92,7 +97,7 @@ qmake
 make
 ```
 
-Create a systemd service.
+Create and enable a systemd service.
 
 ```bash
 sudo nano /etc/systemd/user/whistledetector.service
@@ -101,7 +106,8 @@ sudo nano /etc/systemd/user/whistledetector.service
 ```ini
 [Unit]
 Description=WhistleDetector
-After=network.target
+After=network.target pulseaudio.service
+Requires=pulseaudio.service
 StartLimitIntervalSec=0
 
 [Service]
@@ -114,9 +120,8 @@ ExecStart=/home/chrizbee/WhistleDetector/build/WhistleDetector
 WantedBy=default.target
 ```
 
-Enable the service and reboot.
-
 ```bash
 systemctl --user enable whistledetector
-sudo reboot
 ```
+
+Autologin as user `chrizbee` to start `whistledetector.service` automatically. You could also setup the whole guide systemwide, but it's not recommended to run `pulseaudio` systemwide.

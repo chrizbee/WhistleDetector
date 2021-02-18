@@ -12,8 +12,8 @@ namespace config {
 
 	// Measure limits
 	static const double cutoffMag = 300;    // Cutoff magnitude
-	static const double cutoffLower = 200;  // Lower cutoff frequency
-	static const double cutoffUpper = 3000; // Upper cutoff frequency
+	static const double cutoffLower = 800;  // Lower cutoff frequency
+	static const double cutoffUpper = 2000; // Upper cutoff frequency
 
 	// Frequencies and tolerances
 	static const double f1 = 1800;          // First freqency
