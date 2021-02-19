@@ -65,8 +65,6 @@ Detector::Detector(QObject *parent) :
 	for (uint i = 0; i < f.sampleCount; ++i)
 		f.window(i) = 0.5 * (1 - cos(2 * M_PI * i / (f.sampleCount - 1))); // Hanning
 
-	qDebug() << "Bytes/Sample:" << f.bytesPerSample << "\nSample Size:" << format.sampleSize();
-
 	// Configure timer
 	timer_.setSingleShot(true);
 	timer_.setInterval(ConfM.value<int>("pause") + ConfM.value<int>("deltaT"));
