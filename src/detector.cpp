@@ -34,7 +34,7 @@ Detector::Detector(QObject *parent) :
 	format.setCodec("audio/pcm");
 	format.setSampleRate(ConfM.value<int>("sampleRate"));
 	format.setSampleSize(ConfM.value<int>("sampleSize"));
-	format.setSampleType(QAudioFormat::SampleType::SignedInt);
+	format.setSampleType(QAudioFormat::SampleType::UnSignedInt);
 
 	// Check if format is supported
 	QAudioDeviceInfo info = QAudioDeviceInfo::defaultInputDevice();
@@ -48,7 +48,6 @@ Detector::Detector(QObject *parent) :
 		qInfo() << "Sample Sizes   :" << info.supportedSampleSizes();
 		qInfo() << "Sample Types   :" << info.supportedSampleTypes();
 	}
-
 
 	// Create audio input with format and start recording
 	input_ = new QAudioInput(format, this);
@@ -65,6 +64,8 @@ Detector::Detector(QObject *parent) :
 	f.window = arrd::from_shape({f.sampleCount});
 	for (uint i = 0; i < f.sampleCount; ++i)
 		f.window(i) = 0.5 * (1 - cos(2 * M_PI * i / (f.sampleCount - 1))); // Hanning
+
+	qDebug() << "Bytes/Sample:" << f.bytesPerSample << "\nSample Size:" << format.sampleSize();
 
 	// Configure timer
 	timer_.setSingleShot(true);
@@ -84,7 +85,7 @@ void Detector::setEnabled(bool enabled)
 void Detector::onBlockReady()
 {
 	// Static config
-	static const int cutoffMag = ConfM.value<int>("cutoffMag");
+	static const double cutoffMag = ConfM.value<double>("cutoffMag");
 
 	// Check if can read
 	while (input_->bytesReady() >= f.periodSize) {
@@ -99,9 +100,8 @@ void Detector::onBlockReady()
 
 			// Convert bytes to double and apply window function
 			// TODO: Endianness!
-			// TODO: This is not working properly yet - the magnitude is waaaay too high...
 			for (uint i = 0; i < f.sampleCount; ++i) {
-				uint64_t val = static_cast<uint64_t>(*d);
+				int64_t val = static_cast<int64_t>(*d);
 				for (uint j = 1; j < f.bytesPerSample; ++j)
 					val |= *(d + j) << 8;
 				data(i) = static_cast<double>(val) * f.window(i);
