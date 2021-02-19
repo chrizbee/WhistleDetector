@@ -47,6 +47,7 @@ Detector::Detector(QObject *parent) :
 		qInfo() << "Sample Rates   :" << info.supportedSampleRates();
 		qInfo() << "Sample Sizes   :" << info.supportedSampleSizes();
 		qInfo() << "Sample Types   :" << info.supportedSampleTypes();
+		qInfo() << "Nearest Format :" << info.nearestFormat(format);
 	}
 
 	// Create audio input with format and start recording
@@ -115,10 +116,8 @@ void Detector::onBlockReady()
 			double mag = mags(maxIdx);
 
 			// Check for pattern only if magnitude is high enough
-			if (mag > cutoffMag) {
-				qDebug() << mag << f.freqs(maxIdx);
+			if (mag > cutoffMag)
 				detect(f.freqs(maxIdx));
-			}
 		}
 	}
 }
