@@ -9,26 +9,26 @@ class QIODevice;
 
 class Detector : public QObject
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
-	Detector(QObject *parent = nullptr);
-	void setEnabled(bool enabled);
+    Detector(QObject *parent = nullptr);
+    void setEnabled(bool enabled);
 
 private slots:
-	void onBlockReady();
+    void onBlockReady();
 
 protected:
-	void detect(double freq);
+    void detect(double freq);
 
 signals:
-	void patternDetected();
+    void patternDetected();
 
 private:
-	QAudioInput *input_;
-	QIODevice *device_;
-	QTimer timer_;
-	bool enabled_;
+    QAudioInput *input_;
+    QIODevice *device_;
+    QTimer timer_;
+    bool enabled_;
     uint number_;
 };
 

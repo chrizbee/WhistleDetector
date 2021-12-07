@@ -5,23 +5,23 @@
 #include <QDebug>
 
 Application::Application(int &argc, char **argv) :
-	QCoreApplication(argc, argv),
-	detector_(new Detector(this)),
-	client_(new QMQTT::Client(QHostAddress(ConfM.value<QString>("broker")), ConfM.value<int>("port"), this))
+    QCoreApplication(argc, argv),
+    detector_(new Detector(this)),
+    client_(new QMQTT::Client(QHostAddress(ConfM.value<QString>("broker")), ConfM.value<int>("port"), this))
 {
-	// Set id and connect signals
-	connect(detector_, &Detector::patternDetected, this, &Application::onPatternDetected);
-	connect(client_, &QMQTT::Client::received, this, &Application::onClientReceived);
-	connect(client_, &QMQTT::Client::connected, [this]() {
-		static const QString subTopic = ConfM.value<QString>("subTopic");
-		qInfo() << "MQTT Client connected - subscribing to" << subTopic;
-		client_->subscribe(subTopic);
-	});
+    // Set id and connect signals
+    connect(detector_, &Detector::patternDetected, this, &Application::onPatternDetected);
+    connect(client_, &QMQTT::Client::received, this, &Application::onClientReceived);
+    connect(client_, &QMQTT::Client::connected, [this]() {
+        static const QString subTopic = ConfM.value<QString>("subTopic");
+        qInfo() << "MQTT Client connected - subscribing to" << subTopic;
+        client_->subscribe(subTopic);
+    });
 
-	// Setup client
-	client_->setClientId(ConfM.value<QString>("clientName"));
-	client_->setAutoReconnect(true);
-	client_->connectToHost();
+    // Setup client
+    client_->setClientId(ConfM.value<QString>("clientName"));
+    client_->setAutoReconnect(true);
+    client_->connectToHost();
 }
 
 Application::~Application()
@@ -30,23 +30,23 @@ Application::~Application()
 
 void Application::onPatternDetected()
 {
-	// Toggle light
-	static const QStringList toggleTopics = ConfM.value<QStringList>("toggleTopics");
-	qInfo() << "Pattern detected";
-	int cnt = toggleTopics.length();
-	for (int i = 0; i < cnt; ++i)
-		client_->publish(QMQTT::Message(i, toggleTopics[i], "TOGGLE"));
+    // Toggle light
+    static const QStringList toggleTopics = ConfM.value<QStringList>("toggleTopics");
+    qInfo() << "Pattern detected";
+    int cnt = toggleTopics.length();
+    for (int i = 0; i < cnt; ++i)
+        client_->publish(QMQTT::Message(i, toggleTopics[i], "TOGGLE"));
 }
 
 void Application::onClientReceived(const QMQTT::Message &message)
 {
-	// Turn WhistleDetector on / off
-	static const QString pubTopic = ConfM.value<QString>("pubTopic");
-	QString payload = message.payload().toUpper();
-	bool on = payload.contains("ON") ? true : false;
-	QString keyword = on ? "ON" : "OFF";
-	qInfo() << "Turning WhistleDetector" << keyword;
-	QMQTT::Message sendMessage(0, pubTopic, keyword.toUtf8());
-	client_->publish(sendMessage);
-	detector_->setEnabled(on);
+    // Turn WhistleDetector on / off
+    static const QString pubTopic = ConfM.value<QString>("pubTopic");
+    QString payload = message.payload().toUpper();
+    bool on = payload.contains("ON") ? true : false;
+    QString keyword = on ? "ON" : "OFF";
+    qInfo() << "Turning WhistleDetector" << keyword;
+    QMQTT::Message sendMessage(0, pubTopic, keyword.toUtf8());
+    client_->publish(sendMessage);
+    detector_->setEnabled(on);
 }

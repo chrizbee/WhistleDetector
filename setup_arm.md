@@ -22,6 +22,8 @@ sudo adduser chrizbee sudo
 sudo usermod -aG sudo,audio chrizbee
 ```
 
+> Note: After this login as `chrizbee` and perform every action with this user!
+
 ## Install dependencies
 
 To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt` and `xtensor-fftw`.

@@ -5,25 +5,25 @@
 
 class Detector;
 namespace QMQTT {
-	class Client;
-	class Message;
+    class Client;
+    class Message;
 }
 
 class Application : public QCoreApplication
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
-	Application(int &argc, char **argv);
-	~Application();
+    Application(int &argc, char **argv);
+    ~Application();
 
 private slots:
-	void onPatternDetected();
-	void onClientReceived(const QMQTT::Message &message);
+    void onPatternDetected();
+    void onClientReceived(const QMQTT::Message &message);
 
 private:
-	Detector *detector_;
-	QMQTT::Client *client_;
+    Detector *detector_;
+    QMQTT::Client *client_;
 };
 
 #endif // APPLICATION_H
