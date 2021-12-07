@@ -29,7 +29,7 @@ private:
 	QIODevice *device_;
 	QTimer timer_;
 	bool enabled_;
-	uint i_;
+    uint number_;
 };
 
 QList<double> toDouble(const QStringList &stringList);

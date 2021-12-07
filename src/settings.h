@@ -23,8 +23,8 @@ namespace defaults {
 	static const double pause = 300;        // Pause between two tones in ms
 	static const double deltaF = 150;       // Frequencies +- this is ok
 	static const double deltaT = 100;       // Pause +- this is ok
-	static const QList<double> freqs = {
-		1800, 1400
+    static const QList<double> freqs = {    // Difference to last frequency
+        1800, -400, 400                     // Result: 1800, 1400, 1800
 	};
 
 	// MQTT client settings

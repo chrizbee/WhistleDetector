@@ -26,7 +26,7 @@ static struct {
 Detector::Detector(QObject *parent) :
 	QObject(parent),
 	enabled_(true),
-	i_(0)
+    number_(0)
 {
 	// Create format
 	QAudioFormat format;
@@ -71,7 +71,7 @@ Detector::Detector(QObject *parent) :
 	timer_.setInterval(ConfM.value<int>("pause") + ConfM.value<int>("deltaT"));
 
 	// Connect signals
-	connect(&timer_, &QTimer::timeout, [this]() { i_ = 0; });
+    connect(&timer_, &QTimer::timeout, [this]() { number_ = 0; });
 	connect(device_, &QIODevice::readyRead, this, &Detector::onBlockReady);
 }
 
@@ -125,26 +125,37 @@ void Detector::onBlockReady()
 void Detector::detect(double freq)
 {
 	// Static config
-	static const int deltaF = ConfM.value<int>("deltaF");
-	static const int deltaT = ConfM.value<int>("deltaT");
+    static const int maxDeltaF = ConfM.value<int>("deltaF");
+    static const int maxDeltaT = ConfM.value<int>("deltaT");
 	static const QList<double> freqs = toDouble(ConfM.value<QStringList>("freqs"));
+    static double lastFreq = 0.0;
 
 	// Check for index out of range
 	uint cnt = freqs.count();
-	if (i_ >= cnt)
+    if (number_ >= cnt)
 		return;
 
-	// Check for correct frequency and pause
-	if ((abs(freq - freqs[i_]) <= deltaF) &&
-		(i_ == 0 || timer_.remainingTime() <= deltaT * 2)) {
+    // Get delta values
+    double expected = lastFreq + freqs[number_];
+    double deltaF = abs(freq - expected);
+    int deltaT = abs(timer_.remainingTime() - maxDeltaT);
 
-		// Check if end of pattern is reached
-		if (++i_ >= cnt) {
-			i_ = 0;
-			timer_.stop();
-			emit patternDetected();
-		} else timer_.start();
-	}
+    // First frequency will be more forgiving
+    if ((number_ == 0 && deltaF <= maxDeltaF * 2) ||
+        (deltaF <= maxDeltaF && deltaT <= maxDeltaT)) {
+
+        // Set last frequency to this one
+        // First real frequency will be the base for all upcoming
+        lastFreq = number_ == 0 ? freq : expected;
+
+        // Check if end of pattern is reached
+        if (++number_ >= cnt) {
+            number_ = 0;
+            lastFreq = 0.0;
+            timer_.stop();
+            emit patternDetected();
+        } else timer_.start();
+    }
 }
 
 QList<double> toDouble(const QStringList &stringList)
