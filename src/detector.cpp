@@ -95,8 +95,6 @@ void Detector::onBlockReady()
         QByteArray byteData = device_->read(f.periodSize);
         const char *d = byteData.constData();
 
-        qDebug() << "Block:" << enabled_;
-
         // Continue if enabled
         if (enabled_) {
 
@@ -119,8 +117,11 @@ void Detector::onBlockReady()
             double mag = mags(maxIdx);
 
             // Check for pattern only if magnitude is high enough
-            if (mag > cutoffMag)
-                detect(f.freqs(maxIdx));
+            double freq = f.freqs(maxIdx);
+            qDebug() << "Freq :" << freq;
+            if (mag > cutoffMag) {
+                detect(freq);
+            }
         }
     }
 }
