@@ -51,6 +51,23 @@ Detector::Detector(QObject *parent) :
         qInfo() << "Nearest Format :" << format;
     }
 
+    // Print configuration
+    const double cutoffMag = ConfM.value<double>("cutoffMag");
+    const int cutoffLower = ConfM.value<double>("cutoffLower");
+    const int cutoffUpper = ConfM.value<double>("cutoffUpper");
+    const int pause = ConfM.value<int>("pause");
+    const int maxDeltaF = ConfM.value<int>("deltaF");
+    const int maxDeltaT = ConfM.value<int>("deltaT");
+    const QList<double> freqs = toDouble(ConfM.value<QStringList>("freqs"));
+    qInfo() << "Using configuration:";
+    qInfo() << "cutoffMag" << cutoffMag;
+    qInfo() << "cutoffLower" << cutoffLower;
+    qInfo() << "cutoffUpper" << cutoffUpper;
+    qInfo() << "pause" << pause;
+    qInfo() << "maxDeltaF" << maxDeltaF;
+    qInfo() << "maxDeltaT" << maxDeltaT;
+    qInfo() << "freqs" << freqs;
+
     // Create audio input with format and start recording
     input_ = new QAudioInput(format, this);
     device_ = input_->start();
@@ -60,8 +77,8 @@ Detector::Detector(QObject *parent) :
     f.bytesPerSample = format.sampleSize() / 8;
     f.sampleCount = f.periodSize / f.bytesPerSample;
     f.freqs = xt::fftw::rfftfreq(f.sampleCount, 1.0 / format.sampleRate());
-    f.lowerIndex = xt::argmin(xt::abs(f.freqs - ConfM.value<int>("cutoffLower")))();
-    f.upperIndex = xt::argmin(xt::abs(f.freqs - ConfM.value<int>("cutoffUpper")))();
+    f.lowerIndex = xt::argmin(xt::abs(f.freqs - cutoffLower))();
+    f.upperIndex = xt::argmin(xt::abs(f.freqs - cutoffUpper))();
     f.freqs = xt::view(f.freqs, xt::range(f.lowerIndex, f.upperIndex + 1));
     f.window = arrd::from_shape({f.sampleCount});
     for (uint i = 0; i < f.sampleCount; ++i)
@@ -69,7 +86,7 @@ Detector::Detector(QObject *parent) :
 
     // Configure timer
     timer_.setSingleShot(true);
-    timer_.setInterval(ConfM.value<int>("pause") + ConfM.value<int>("deltaT"));
+    timer_.setInterval(pause + maxDeltaT);
 
     // Connect signals
     connect(&timer_, &QTimer::timeout, [this]() { number_ = 0; });
@@ -117,11 +134,8 @@ void Detector::onBlockReady()
             double mag = mags(maxIdx);
 
             // Check for pattern only if magnitude is high enough
-            double freq = f.freqs(maxIdx);
-            qDebug() << "Freq :" << freq;
-            if (mag > cutoffMag) {
-                detect(freq);
-            }
+            if (mag > cutoffMag)
+                detect(f.freqs(maxIdx));
         }
     }
 }
@@ -133,8 +147,6 @@ void Detector::detect(double freq)
     static const int maxDeltaT = ConfM.value<int>("deltaT");
     static const QList<double> freqs = toDouble(ConfM.value<QStringList>("freqs"));
     static double lastFreq = 0.0;
-
-    qDebug() << freqs;
 
     // Check for index out of range
     uint cnt = freqs.count();
