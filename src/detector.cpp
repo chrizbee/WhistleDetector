@@ -133,8 +133,6 @@ void Detector::onBlockReady()
             uint maxIdx = xt::argmax(mags)();
             double mag = mags(maxIdx);
 
-            qDebug() << mag << "/" << cutoffMag;
-
             // Check for pattern only if magnitude is high enough
             if (mag > cutoffMag)
                 detect(f.freqs(maxIdx));
