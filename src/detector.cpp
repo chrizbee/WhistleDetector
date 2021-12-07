@@ -154,6 +154,8 @@ void Detector::detect(double freq)
         return;
 
     // Get delta values
+    if (number_ == 0)
+        lastFreq = 0.0;
     double expected = lastFreq + freqs[number_];
     double deltaF = abs(freq - expected);
     int deltaT = abs(timer_.remainingTime() - maxDeltaT);
