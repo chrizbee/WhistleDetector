@@ -40,6 +40,7 @@ Detector::Detector(QObject *parent) :
     QAudioDeviceInfo info = QAudioDeviceInfo::defaultInputDevice();
     qInfo() << "Using Device" << info.deviceName();
     if (!info.isFormatSupported(format)) {
+        format = info.nearestFormat(format);
         qWarning() << "Format not supported - what is supported:";
         qInfo() << "Byte Order     :" << info.supportedByteOrders();
         qInfo() << "Channel Counts :" << info.supportedChannelCounts();
@@ -47,7 +48,7 @@ Detector::Detector(QObject *parent) :
         qInfo() << "Sample Rates   :" << info.supportedSampleRates();
         qInfo() << "Sample Sizes   :" << info.supportedSampleSizes();
         qInfo() << "Sample Types   :" << info.supportedSampleTypes();
-        qInfo() << "Nearest Format :" << info.nearestFormat(format);
+        qInfo() << "Nearest Format :" << format;
     }
 
     // Create audio input with format and start recording
@@ -94,6 +95,8 @@ void Detector::onBlockReady()
         QByteArray byteData = device_->read(f.periodSize);
         const char *d = byteData.constData();
 
+        qDebug() << "Block:" << enabled_;
+
         // Continue if enabled
         if (enabled_) {
 
@@ -139,6 +142,10 @@ void Detector::detect(double freq)
     double expected = lastFreq + freqs[number_];
     double deltaF = abs(freq - expected);
     int deltaT = abs(timer_.remainingTime() - maxDeltaT);
+
+    qDebug() << "Expected :" << expected;
+    qDebug() << "DeltaF   :" << deltaF;
+    qDebug() << "DeltaT   :" << deltaT;
 
     // First frequency will be more forgiving
     if ((number_ == 0 && deltaF <= maxDeltaF * 2) ||
