@@ -160,7 +160,9 @@ void Detector::detect(double freq)
     double deltaF = abs(freq - expected);
     int deltaT = abs(timer_.remainingTime() - maxDeltaT);
 
+    qDebug() << "-----------------------";
     qDebug() << "Expected :" << expected;
+    qDebug() << "Real     :" << freq;
     qDebug() << "DeltaF   :" << deltaF;
     qDebug() << "DeltaT   :" << deltaT;
 
