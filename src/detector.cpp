@@ -134,6 +134,8 @@ void Detector::detect(double freq)
     static const QList<double> freqs = toDouble(ConfM.value<QStringList>("freqs"));
     static double lastFreq = 0.0;
 
+    qDebug() << freqs;
+
     // Check for index out of range
     uint cnt = freqs.count();
     if (number_ >= cnt)
