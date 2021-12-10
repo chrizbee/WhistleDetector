@@ -2,7 +2,6 @@
 #include "settings.h"
 #include "detector.h"
 #include <qmqtt.h>
-#include <QDebug>
 
 Application::Application(int &argc, char **argv) :
     QCoreApplication(argc, argv),

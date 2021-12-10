@@ -9,7 +9,6 @@
 #include <xtensor-fftw/basic.hpp>
 #include <xtensor-fftw/helper.hpp>
 #include <cmath>
-#include <QDebug>
 
 typedef xt::xarray<double> arrd;
 
