@@ -20,6 +20,7 @@ private slots:
 
 protected:
     void detect(double freq);
+    void debug(double freq, double mag, double cutoff);
 
 signals:
     void patternDetected();

@@ -53,4 +53,5 @@ compile_commands.json
 
 # Custom files and folders
 build
+qmqtt
 *_resource.rc

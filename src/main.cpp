@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
     Application app(argc, argv);
     app.setOrganizationName("chrizbee");
     app.setOrganizationDomain("chrizbee.github.io");
-    app.setApplicationName("WhistleDetector");
+    app.setApplicationName(APP_NAME);
     app.setApplicationVersion(APP_VERSION);
     return app.exec();
 }

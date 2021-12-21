@@ -8,7 +8,13 @@
 #include <xtensor/xarray.hpp>
 #include <xtensor-fftw/basic.hpp>
 #include <xtensor-fftw/helper.hpp>
-#include <cmath>
+
+#define DEBUG // Debug frequency and magnitude
+#ifdef DEBUG
+#include <iostream>
+#include <iomanip>
+#include <string>
+#endif
 
 typedef xt::xarray<double> arrd;
 
@@ -76,12 +82,12 @@ Detector::Detector(QObject *parent) :
     f.bytesPerSample = format.sampleSize() / 8;
     f.sampleCount = f.periodSize / f.bytesPerSample;
     f.freqs = xt::fftw::rfftfreq(f.sampleCount, 1.0 / format.sampleRate());
-    f.lowerIndex = xt::argmin(xt::abs(f.freqs - cutoffLower))();
-    f.upperIndex = xt::argmin(xt::abs(f.freqs - cutoffUpper))();
+    f.lowerIndex = (uint)(xt::argmin(xt::abs(f.freqs - cutoffLower))());
+    f.upperIndex = (uint)(xt::argmin(xt::abs(f.freqs - cutoffUpper))());
     f.freqs = xt::view(f.freqs, xt::range(f.lowerIndex, f.upperIndex + 1));
     f.window = arrd::from_shape({f.sampleCount});
     for (uint i = 0; i < f.sampleCount; ++i)
-        f.window(i) = 0.5 * (1 - cos(2 * M_PI * i / (f.sampleCount - 1))); // Hanning
+        f.window(i) = 0.5 * (1 - cos(2 * xt::numeric_constants<double>::PI * i / (f.sampleCount - 1))); // Hanning
 
     // Configure timer
     timer_.setSingleShot(true);
@@ -104,7 +110,7 @@ void Detector::onBlockReady()
     static const double cutoffMag = ConfM.value<double>("cutoffMag");
 
     // Check if can read
-    while (input_->bytesReady() >= f.periodSize) {
+    while ((uint)(input_->bytesReady()) >= f.periodSize) {
 
         // Read a block of samples
         arrd data = arrd::from_shape({f.sampleCount});
@@ -129,12 +135,17 @@ void Detector::onBlockReady()
             mags = xt::view(mags, xt::range(f.lowerIndex, f.upperIndex + 1));
 
             // Get maximum
-            uint maxIdx = xt::argmax(mags)();
+            size_t maxIdx = xt::argmax(mags)();
             double mag = mags(maxIdx);
 
+#ifdef DEBUG
+            // Debug frequency and magnitude
+            debug(f.freqs(maxIdx), mag, cutoffMag);
+#else
             // Check for pattern only if magnitude is high enough
             if (mag > cutoffMag)
                 detect(f.freqs(maxIdx));
+#endif
         }
     }
 }
@@ -175,6 +186,27 @@ void Detector::detect(double freq)
             emit patternDetected();
         } else timer_.start();
     }
+}
+
+void Detector::debug(double freq, double mag, double cutoff)
+{
+    uint part1 = 0, part2 = 0, rest1 = 50, rest2 = 50;
+    uint ticks = (uint)(50 * mag / cutoff);
+    if (ticks <= 50) {
+        part1 = ticks;
+        rest1 = 50 - ticks;
+    } else if (ticks <= 100) {
+        part1 = 50;
+        rest1 = 0;
+        part2 = ticks - 50;
+        rest2 = 100 - ticks;
+    } else {
+        part1 = 50;
+        rest1 = 0;
+        part2 = 50;
+        rest2 = 0;
+    }
+    std::cout << std::string(ticks, '█');
 }
 
 QList<double> toDouble(const QStringList &stringList)
