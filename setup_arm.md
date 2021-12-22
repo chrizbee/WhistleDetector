@@ -124,7 +124,7 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=always
 RestartSec=1
-ExecStart=/home/chrizbee/WhistleDetector/build/WhistleDetector
+ExecStart=/home/chrizbee/WhistleDetector/build/WhistleDetector/WhistleDetector
 
 [Install]
 WantedBy=default.target

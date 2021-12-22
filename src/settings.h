@@ -6,7 +6,7 @@
 #include <QStringList>
 #include <QHostAddress>
 
-#define DEBUG // Debug frequency and magnitude
+//#define DEBUG // Debug frequency and magnitude
 #define ConfM Settings::instance()
 
 namespace defaults {
