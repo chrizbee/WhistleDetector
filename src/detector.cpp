@@ -9,7 +9,6 @@
 #include <xtensor-fftw/basic.hpp>
 #include <xtensor-fftw/helper.hpp>
 
-#define DEBUG // Debug frequency and magnitude
 #ifdef DEBUG
 #include <iostream>
 #include <iomanip>
@@ -31,6 +30,7 @@ static struct {
 Detector::Detector(QObject *parent) :
     QObject(parent),
     enabled_(true),
+    lastFreq_(0.0),
     number_(0)
 {
     // Create format
@@ -56,7 +56,7 @@ Detector::Detector(QObject *parent) :
         qInfo() << "Nearest Format :" << format;
     }
 
-    // Print configuration
+    // Get and print configuration
     const double cutoffMag = ConfM.value<double>("cutoffMag");
     const int cutoffLower = ConfM.value<double>("cutoffLower");
     const int cutoffUpper = ConfM.value<double>("cutoffUpper");
@@ -94,8 +94,14 @@ Detector::Detector(QObject *parent) :
     timer_.setInterval(pause + maxDeltaT);
 
     // Connect signals
-    connect(&timer_, &QTimer::timeout, [this]() { number_ = 0; });
     connect(device_, &QIODevice::readyRead, this, &Detector::onBlockReady);
+    connect(&timer_, &QTimer::timeout, [this]() {
+        lastFreq_ = 0;
+        number_ = 0;
+#ifdef DEBUG
+        qDebug() << "--------- next try ---------";
+#endif
+    });
 }
 
 void Detector::setEnabled(bool enabled)
@@ -121,7 +127,6 @@ void Detector::onBlockReady()
         if (enabled_) {
 
             // Convert bytes to double and apply window function
-            // TODO: Endianness!
             for (uint i = 0; i < f.sampleCount; ++i) {
                 int64_t val = static_cast<int64_t>(*d);
                 for (uint j = 1; j < f.bytesPerSample; ++j)
@@ -139,13 +144,11 @@ void Detector::onBlockReady()
             double mag = mags(maxIdx);
 
 #ifdef DEBUG
-            // Debug frequency and magnitude
             debug(f.freqs(maxIdx), mag, cutoffMag);
-#else
+#endif
             // Check for pattern only if magnitude is high enough
             if (mag > cutoffMag)
                 detect(f.freqs(maxIdx));
-#endif
         }
     }
 }
@@ -156,7 +159,6 @@ void Detector::detect(double freq)
     static const int maxDeltaF = ConfM.value<int>("deltaF");
     static const int maxDeltaT = ConfM.value<int>("deltaT");
     static const QList<double> freqs = toDouble(ConfM.value<QStringList>("freqs"));
-    static double lastFreq = 0.0;
 
     // Check for index out of range
     uint cnt = freqs.count();
@@ -164,9 +166,7 @@ void Detector::detect(double freq)
         return;
 
     // Get delta values
-    if (number_ == 0)
-        lastFreq = 0.0;
-    double expected = lastFreq + freqs[number_];
+    double expected = lastFreq_ + freqs[number_];
     double deltaF = abs(freq - expected);
     int deltaT = abs(timer_.remainingTime() - maxDeltaT);
 
@@ -176,12 +176,15 @@ void Detector::detect(double freq)
 
         // Set last frequency to this one
         // First real frequency will be the base for all upcoming
-        lastFreq = number_ == 0 ? freq : expected;
+        lastFreq_ = number_ == 0 ? freq : expected;
+#ifdef DEBUG
+        qDebug() << "Tone" << expected << ":" << freq;
+#endif
 
         // Check if end of pattern is reached
         if (++number_ >= cnt) {
             number_ = 0;
-            lastFreq = 0.0;
+            lastFreq_ = 0.0;
             timer_.stop();
             emit patternDetected();
         } else timer_.start();
@@ -190,23 +193,24 @@ void Detector::detect(double freq)
 
 void Detector::debug(double freq, double mag, double cutoff)
 {
-    uint part1 = 0, part2 = 0, rest1 = 50, rest2 = 50;
+    // Cutoff is at half the line
+    static double maxLevel = mag;
+    static const uint maxTicks = 100, cutoffTicks = 50;
+
+    // Check for max level
+    if (mag > maxLevel) maxLevel = mag;
+
+    // Calculate number of ticks and generate string
     uint ticks = (uint)(50 * mag / cutoff);
-    if (ticks <= 50) {
-        part1 = ticks;
-        rest1 = 50 - ticks;
-    } else if (ticks <= 100) {
-        part1 = 50;
-        rest1 = 0;
-        part2 = ticks - 50;
-        rest2 = 100 - ticks;
-    } else {
-        part1 = 50;
-        rest1 = 0;
-        part2 = 50;
-        rest2 = 0;
-    }
-    std::cout << std::string(ticks, '█');
+    if (ticks > maxTicks) ticks = maxTicks;
+    QString line = QString(ticks, '=') + QString(maxTicks - ticks, ' ');
+    line[0] = '['; line[cutoffTicks] = '|'; line[maxTicks] = ']';
+
+    // Print string and CR
+    std::cout << line.toStdString()
+              << " Max Level: " << maxLevel
+              << " Frequency: " << freq
+              << '\r' << std::flush;
 }
 
 QList<double> toDouble(const QStringList &stringList)

@@ -18,7 +18,11 @@ Application::Application(int &argc, char **argv) :
     });
 
     // Setup client
-    client_->setClientId(ConfM.value<QString>("clientName"));
+    QString clientName = ConfM.value<QString>("clientName");
+#ifdef DEBUG
+    clientName.append("Debugger");
+#endif
+    client_->setClientId(clientName);
     client_->setAutoReconnect(true);
     client_->connectToHost();
 }

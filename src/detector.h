@@ -26,10 +26,11 @@ signals:
     void patternDetected();
 
 private:
+    bool enabled_;
     QAudioInput *input_;
     QIODevice *device_;
+    double lastFreq_;
     QTimer timer_;
-    bool enabled_;
     uint number_;
 };
 
