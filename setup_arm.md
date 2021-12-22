@@ -86,17 +86,25 @@ git clone https://github.com/chrizbee/WhistleDetector
 cd WhistleDetector
 ```
 
+Clone the `QMqtt` GitHub repository inside `WhistleDetector`.
+
+```bash
+git clone https://github.com/emqx/qmqtt
+```
+
 Edit `config.h` to use your own configuration and MQTT topics.
 
 ```bash
 nano src/config.h
 ```
 
-Build it using `qmake` and `make`. Make sure `CONDA_PREFIX` is set before building.
+Build it using `cmake`. Make sure `CONDA_PREFIX` is set before building.
 
 ```bash
-qmake
-make
+mkdir build
+cd build
+cmake ..
+cmake --build . [-- -j4]
 ```
 
 Create and enable a systemd service.

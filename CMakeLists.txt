@@ -8,7 +8,7 @@ project(WhistleDetector
 )
 
 # Set C++ standard and preprocessor macros
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_compile_definitions(APP_NAME="${CMAKE_PROJECT_NAME}")
 add_compile_definitions(APP_VERSION="${CMAKE_PROJECT_VERSION}")
@@ -32,7 +32,6 @@ add_executable(WhistleDetector
 add_subdirectory(qmqtt)
 target_include_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/include)
 target_link_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/lib)
-#message("hihi $ENV{CONDA_PREFIX}")
 target_link_libraries(WhistleDetector PRIVATE Qt5::Core Qt5::Multimedia Qt5::Network qmqtt fftw3)
 
 # Deploy dll's with executable on Windows

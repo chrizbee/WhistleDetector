@@ -9,7 +9,7 @@ Get started by building the code from source (for *Windows*, *Linux* and *Mac*).
 
 ### Prerequisites
 
-To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt` and `xtensor-fftw` (see links below). If you are going to build on Windows, you need to make sure, that your `PATH` variable contains paths to *Qt* and *MinGW* / *MSVC* toolsets (*bin* folder). For a detailed guide on how to install these on Ubuntu (ARM) see [setup_arm.md](setup_arm.md).
+To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt`, `xtensor-fftw` and `cmake`(see links below). If you are going to build on Windows, you need to make sure, that your `PATH` variable contains paths to *Qt* and *MinGW* / *MSVC* toolsets (*bin* folder). For a detailed guide on how to install these on Ubuntu (ARM) see [setup_arm.md](setup_arm.md).
 
 ## Building
 
@@ -19,17 +19,25 @@ git clone https://github.com/chrizbee/WhistleDetector
 cd WhistleDetector
 ```
 
+Clone the `QMqtt` GitHub repository inside `WhistleDetector`.
+
+```bash
+git clone https://github.com/emqx/qmqtt
+```
+
 Edit `config.h` to use your own configuration and MQTT topics.
 
 ```bash
 nano src/config.h
 ```
 
-Build it using `qmake` and `make`. Make sure `CONDA_PREFIX` is set before building.
+Build it using `cmake`. Make sure `CONDA_PREFIX` is set before building.
 
 ```bash
-qmake
-make
+mkdir build
+cd build
+cmake ..
+cmake --build . [-- -j4]
 ```
 Run the application.
 ## Deployment
@@ -42,6 +50,7 @@ Run the application.
 * [Qt5](https://www.qt.io/) - The UI framework used
 * [QMqtt](https://github.com/emqx/qmqtt) - Qt MQTT Client
 * [xtensor-fftw](https://github.com/xtensor-stack/xtensor-fftw) - Used for FFT
+* [CMake](https://cmake.org/) - Build the application
 
 ## Versioning
 
