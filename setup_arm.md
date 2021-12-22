@@ -47,15 +47,6 @@ pacmd list-sources # Remember the index
 pacmd set-default-source <index>
 ```
 
-Install `QMqtt` module.
-
-```bash
-git clone https://github.com/emqtt/qmqtt.git
-cd qmqtt
-qmake
-sudo make install
-```
-
 The best way to install `xtensor-fftw` and its dependencies is by using `conda`. You don't need to automatically initialize by running `conda init`. Instead just export `CONDA_PREFIX` on startup.
 
 ```bash
