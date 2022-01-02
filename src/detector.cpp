@@ -114,6 +114,7 @@ void Detector::onBlockReady()
 {
     // Static config
     static const double cutoffMag = ConfM.value<double>("cutoffMag");
+    static Lowpass lowpass(ConfM.value<int>("magnitudeLowpass"));
 
     // Check if can read
     while ((uint)(input_->bytesReady()) >= f.periodSize) {
@@ -141,7 +142,7 @@ void Detector::onBlockReady()
 
             // Get maximum
             size_t maxIdx = xt::argmax(mags)();
-            double mag = mags(maxIdx);
+            double mag = lowpass.add(mags(maxIdx));
 
 #ifdef DEBUG
             debug(f.freqs(maxIdx), mag, cutoffMag);
@@ -220,4 +221,27 @@ QList<double> toDouble(const QStringList &stringList)
     for (const QString &str : stringList)
         out.append(str.toDouble());
     return out;
+}
+
+Lowpass::Lowpass(int size) :
+    size_(size > 0 ? size : 1),
+    samples_(size_, 0),
+    index_(0)
+{
+}
+
+double Lowpass::add(double value)
+{
+    // Replace oldest value with new one
+    samples_[index_] = value;
+
+    // Loop index at end
+    if (++index_ >= size_)
+        index_ = 0;
+
+    // Calculate and return the average
+    double sum = 0.0;
+    for (int i = 0; i < size_; ++i)
+        sum += samples_[i];
+    return sum / size_;
 }

@@ -34,6 +34,18 @@ private:
     uint number_;
 };
 
+class Lowpass
+{
+public:
+    Lowpass(int size);
+    double add(double value);
+
+private:
+    const int size_;
+    QVector<double> samples_;
+    int index_;
+};
+
 QList<double> toDouble(const QStringList &stringList);
 
 #endif // DETECTOR_H
