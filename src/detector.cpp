@@ -99,7 +99,7 @@ Detector::Detector(QObject *parent) :
         lastFreq_ = 0;
         number_ = 0;
 #ifdef DEBUG
-        qDebug() << "--------- next try ---------";
+        qDebug() << "\n--------- next try ---------";
 #endif
     });
 }
@@ -179,7 +179,7 @@ void Detector::detect(double freq)
         // First real frequency will be the base for all upcoming
         lastFreq_ = number_ == 0 ? freq : expected;
 #ifdef DEBUG
-        qDebug() << "Tone" << expected << ":" << freq;
+        qDebug() << "\nTone" << expected << ":" << freq;
 #endif
 
         // Check if end of pattern is reached
