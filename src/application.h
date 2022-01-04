@@ -6,9 +6,8 @@
 typedef QApplication QApp;
 #else
 #include <QCoreApplication>
-typedef QCoreApplication App;
+typedef QCoreApplication QApp;
 #endif
-
 
 class Detector;
 namespace QMQTT {
