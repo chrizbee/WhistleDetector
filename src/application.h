@@ -1,7 +1,7 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#include <QCoreApplication>
+#include <QApplication>
 
 class Detector;
 namespace QMQTT {
@@ -9,7 +9,7 @@ namespace QMQTT {
     class Message;
 }
 
-class Application : public QCoreApplication
+class Application : public QApplication
 {
     Q_OBJECT
 
