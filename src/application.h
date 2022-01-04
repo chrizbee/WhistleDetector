@@ -1,7 +1,14 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
+#ifdef VISUALIZE
 #include <QApplication>
+typedef QApplication QApp;
+#else
+#include <QCoreApplication>
+typedef QCoreApplication App;
+#endif
+
 
 class Detector;
 namespace QMQTT {
@@ -9,7 +16,7 @@ namespace QMQTT {
     class Message;
 }
 
-class Application : public QApplication
+class Application : public QApp
 {
     Q_OBJECT
 

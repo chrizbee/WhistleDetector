@@ -1,6 +1,8 @@
 #ifndef VISUALIZER_H
 #define VISUALIZER_H
 
+#ifdef VISUALIZE
+
 #include <QWidget>
 #include <vector>
 
@@ -23,4 +25,5 @@ private:
     std::vector<double> values_;
 };
 
+#endif // VISUALIZE
 #endif // VISUALIZER_H

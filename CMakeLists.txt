@@ -7,6 +7,9 @@ project(WhistleDetector
     LANGUAGES CXX
 )
 
+# CMake options
+option(VISUALIZE "Create a window to visualize frequencies" OFF)
+
 # Set C++ standard and preprocessor macros
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,7 +36,11 @@ add_executable(WhistleDetector
 add_subdirectory(qmqtt)
 target_include_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/include)
 target_link_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/lib)
-target_link_libraries(WhistleDetector PRIVATE Qt5::Core Qt5::Widgets Qt5::Multimedia Qt5::Network qmqtt fftw3)
+target_link_libraries(WhistleDetector PRIVATE Qt5::Core Qt5::Multimedia Qt5::Network qmqtt fftw3)
+if (VISUALIZE)
+    target_link_libraries(WhistleDetector PRIVATE Qt5::Widgets)
+    target_compile_definitions(WhistleDetector PRIVATE VISUALIZE)
+endif()
 
 # Deploy dll's with executable on Windows
 if (WIN32)

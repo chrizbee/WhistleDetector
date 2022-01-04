@@ -1,6 +1,8 @@
 #include "visualizer.h"
 #include <QPainter>
 
+#ifdef VISUALIZE
+
 Visualizer::Visualizer(QWidget *parent) :
     QWidget(parent),
     cutoff_(1.0)
@@ -50,3 +52,5 @@ void Visualizer::paintEvent(QPaintEvent *event)
         x += w;
     }
 }
+
+#endif // VISUALIZE

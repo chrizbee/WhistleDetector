@@ -4,7 +4,7 @@
 #include <qmqtt.h>
 
 Application::Application(int &argc, char **argv) :
-    QApplication(argc, argv),
+    QApp(argc, argv),
     detector_(new Detector(this)),
     client_(new QMQTT::Client(QHostAddress(ConfM.value<QString>("broker")), ConfM.value<int>("port"), this))
 {

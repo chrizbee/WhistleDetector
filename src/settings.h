@@ -6,7 +6,6 @@
 #include <QStringList>
 #include <QHostAddress>
 
-//#define VISUALIZE // Visualize frequencies
 #define ConfM Settings::instance()
 
 namespace defaults {

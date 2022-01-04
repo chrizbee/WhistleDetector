@@ -73,8 +73,9 @@ Detector::Detector(QObject *parent) :
 
 Detector::~Detector()
 {
-    // Noop if not created
+#ifdef VISUALIZE
     delete vis_;
+#endif
 }
 
 void Detector::start()
