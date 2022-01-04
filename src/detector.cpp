@@ -1,19 +1,15 @@
 #include "detector.h"
 #include "settings.h"
+#include "visualizer.h"
 #include <QIODevice>
 #include <QAudioInput>
 #include <QCoreApplication>
+#include <xtensor/xio.hpp>
 #include <xtensor/xview.hpp>
 #include <xtensor/xsort.hpp>
 #include <xtensor/xarray.hpp>
 #include <xtensor-fftw/basic.hpp>
 #include <xtensor-fftw/helper.hpp>
-
-#ifdef DEBUG
-#include <iostream>
-#include <iomanip>
-#include <string>
-#endif
 
 typedef xt::xarray<double> arrd;
 
@@ -29,7 +25,8 @@ static struct {
 
 Detector::Detector(QObject *parent) :
     QObject(parent),
-    enabled_(true),
+    device_(nullptr),
+    vis_(nullptr),
     lastFreq_(0.0),
     number_(0)
 {
@@ -40,6 +37,7 @@ Detector::Detector(QObject *parent) :
     format.setSampleRate(ConfM.value<int>("sampleRate"));
     format.setSampleSize(ConfM.value<int>("sampleSize"));
     format.setSampleType(QAudioFormat::SampleType::UnSignedInt);
+    format.setByteOrder(QAudioFormat::LittleEndian);
 
     // Check if format is supported
     QAudioDeviceInfo info = QAudioDeviceInfo::defaultInputDevice();
@@ -56,28 +54,43 @@ Detector::Detector(QObject *parent) :
         qInfo() << "Nearest Format :" << format;
     }
 
-    // Get and print configuration
-    const double cutoffMag = ConfM.value<double>("cutoffMag");
-    const int cutoffLower = ConfM.value<double>("cutoffLower");
-    const int cutoffUpper = ConfM.value<double>("cutoffUpper");
-    const int pause = ConfM.value<int>("pause");
-    const int maxDeltaF = ConfM.value<int>("deltaF");
-    const int maxDeltaT = ConfM.value<int>("deltaT");
-    const QList<double> freqs = toDouble(ConfM.value<QStringList>("freqs"));
-    qInfo() << "Using configuration:";
-    qInfo() << "cutoffMag" << cutoffMag;
-    qInfo() << "cutoffLower" << cutoffLower;
-    qInfo() << "cutoffUpper" << cutoffUpper;
-    qInfo() << "pause" << pause;
-    qInfo() << "maxDeltaF" << maxDeltaF;
-    qInfo() << "maxDeltaT" << maxDeltaT;
-    qInfo() << "freqs" << freqs;
-
-    // Create audio input with format and start recording
+    // Create audio input with format
     input_ = new QAudioInput(format, this);
+
+    // Configure timer
+    const int pause = ConfM.value<int>("pause");
+    const int maxDeltaT = ConfM.value<int>("deltaT");
+    timer_.setSingleShot(true);
+    timer_.setInterval(pause + maxDeltaT);
+    connect(&timer_, &QTimer::timeout, [this]() { lastFreq_ = 0; number_ = 0; });
+
+    // Create and show visualizer
+#ifdef VISUALIZE
+    vis_ = new Visualizer;
+    vis_->show();
+#endif
+}
+
+Detector::~Detector()
+{
+    // Noop if not created
+    delete vis_;
+}
+
+void Detector::start()
+{
+    // Static settings
+    static const int cutoffLower = ConfM.value<double>("cutoffLower");
+    static const int cutoffUpper = ConfM.value<double>("cutoffUpper");
+    static const double cutoffMag = ConfM.value<double>("cutoffMag");
+    static const double twoPi = 2 * xt::numeric_constants<double>::PI;
+
+    // Start recording
     device_ = input_->start();
 
     // Fourier precalculations
+    // QAudioInput::periodSize() can only be accessed after start().
+    QAudioFormat format = input_->format();
     f.periodSize = input_->periodSize();
     f.bytesPerSample = format.sampleSize() / 8;
     f.sampleCount = f.periodSize / f.bytesPerSample;
@@ -87,36 +100,37 @@ Detector::Detector(QObject *parent) :
     f.freqs = xt::view(f.freqs, xt::range(f.lowerIndex, f.upperIndex + 1));
     f.window = arrd::from_shape({f.sampleCount});
     for (uint i = 0; i < f.sampleCount; ++i)
-        f.window(i) = 0.5 * (1 - cos(2 * xt::numeric_constants<double>::PI * i / (f.sampleCount - 1))); // Hanning
+        f.window(i) = 0.5 * (1 - cos(twoPi * i / (f.sampleCount - 1))); // Hanning
 
-    // Configure timer
-    timer_.setSingleShot(true);
-    timer_.setInterval(pause + maxDeltaT);
-
-    // Connect signals
-    connect(device_, &QIODevice::readyRead, this, &Detector::onBlockReady);
-    connect(&timer_, &QTimer::timeout, [this]() {
-        lastFreq_ = 0;
-        number_ = 0;
-#ifdef DEBUG
-        qDebug() << "\n--------- next try ---------";
+    // Set x axis of visualizer
+#ifdef VISUALIZE
+    vis_->setCutoff(cutoffMag);
+    vis_->setX(std::vector<double>(f.freqs.begin(), f.freqs.end()));
 #endif
-    });
+
+    // Connect readyRead
+    connect(device_, &QIODevice::readyRead, this, &Detector::onBlockReady);
 }
 
-void Detector::setEnabled(bool enabled)
+void Detector::stop()
 {
-    // Set enabled
-    enabled_ = enabled;
+    // Stop recording
+    input_->stop();
+    device_ = nullptr;
 }
 
 void Detector::onBlockReady()
 {
     // Static config
     static const double cutoffMag = ConfM.value<double>("cutoffMag");
-    static Lowpass lowpass(ConfM.value<int>("magnitudeLowpass"));
+    static const double maxToMean = ConfM.value<double>("maxToMean");
 
-    // Check if can read
+    // Check if device exists
+    if (device_ == nullptr)
+        return;
+
+    // Read one period of data at a time
+    // TODO: SampleCount should be a power of 2 for faster FFTs
     while ((uint)(input_->bytesReady()) >= f.periodSize) {
 
         // Read a block of samples
@@ -124,33 +138,37 @@ void Detector::onBlockReady()
         QByteArray byteData = device_->read(f.periodSize);
         const char *d = byteData.constData();
 
-        // Continue if enabled
-        if (enabled_) {
-
-            // Convert bytes to double and apply window function
-            for (uint i = 0; i < f.sampleCount; ++i) {
-                int64_t val = static_cast<int64_t>(*d);
-                for (uint j = 1; j < f.bytesPerSample; ++j)
-                    val |= *(d + j) << 8;
-                data(i) = static_cast<double>(val) * f.window(i);
-                d += f.bytesPerSample;
-            }
-
-            // Calculate FFT and use absolute magnitudes only
-            arrd mags = xt::abs(xt::fftw::rfft(data));
-            mags = xt::view(mags, xt::range(f.lowerIndex, f.upperIndex + 1));
-
-            // Get maximum
-            size_t maxIdx = xt::argmax(mags)();
-            double mag = lowpass.add(mags(maxIdx));
-
-#ifdef DEBUG
-            debug(f.freqs(maxIdx), mag, cutoffMag);
-#endif
-            // Check for pattern only if magnitude is high enough
-            if (mag > cutoffMag)
-                detect(f.freqs(maxIdx));
+        // Convert bytes to double and apply window function
+        for (uint i = 0; i < f.sampleCount; ++i) {
+            int64_t val = static_cast<int64_t>(*d);
+            for (uint8_t j = 1; j < f.bytesPerSample; ++j)
+                val |= *(d + j) << 8; // Little endian!
+            data(i) = static_cast<double>(val) * f.window(i);
+            d += f.bytesPerSample;
         }
+
+        // Calculate FFT and use absolute magnitudes only
+        // RFFT -> Negative frequency terms are not calculated
+        // Also extract only frequencies within the limits
+        arrd mags = xt::abs(xt::fftw::rfft(data));
+        mags = xt::view(mags, xt::range(f.lowerIndex, f.upperIndex + 1));
+
+        // Get maximum and mean
+        size_t maxIdx = xt::argmax(mags)();
+        double mean = xt::mean(mags)();
+        double mag = mags(maxIdx);
+
+        // Try to detect pattern only if
+        // - the magnitude of the main frequency is high enough
+        // - the max to mean ratio is big enough
+        // -> This will prevent random detections of loud noise
+        if (mag > cutoffMag && mag / mean > maxToMean)
+            detect(f.freqs(maxIdx));
+
+        // Visualize frequencies
+#ifdef VISUALIZE
+        vis_->setValues(std::vector<double>(mags.begin(), mags.end()));
+#endif
     }
 }
 
@@ -178,9 +196,6 @@ void Detector::detect(double freq)
         // Set last frequency to this one
         // First real frequency will be the base for all upcoming
         lastFreq_ = number_ == 0 ? freq : expected;
-#ifdef DEBUG
-        qDebug() << "\nTone" << expected << ":" << freq;
-#endif
 
         // Check if end of pattern is reached
         if (++number_ >= cnt) {
@@ -192,28 +207,6 @@ void Detector::detect(double freq)
     }
 }
 
-void Detector::debug(double freq, double mag, double cutoff)
-{
-    // Cutoff is at half the line
-    static double maxLevel = mag;
-    static const uint maxTicks = 100, cutoffTicks = 50;
-
-    // Check for max level
-    if (mag > maxLevel) maxLevel = mag;
-
-    // Calculate number of ticks and generate string
-    uint ticks = (uint)(50 * mag / cutoff);
-    if (ticks > maxTicks) ticks = maxTicks;
-    QString line = QString(ticks, '=') + QString(maxTicks - ticks, ' ');
-    line[0] = '['; line[cutoffTicks] = '|'; line[maxTicks] = ']';
-
-    // Print string and CR
-    std::cout << line.toStdString()
-              << " Max Level: " << maxLevel
-              << " Frequency: " << freq
-              << '\r' << std::flush;
-}
-
 QList<double> toDouble(const QStringList &stringList)
 {
     // Convert QStringList to QList<double>
@@ -221,27 +214,4 @@ QList<double> toDouble(const QStringList &stringList)
     for (const QString &str : stringList)
         out.append(str.toDouble());
     return out;
-}
-
-Lowpass::Lowpass(int size) :
-    size_(size > 0 ? size : 1),
-    samples_(size_, 0),
-    index_(0)
-{
-}
-
-double Lowpass::add(double value)
-{
-    // Replace oldest value with new one
-    samples_[index_] = value;
-
-    // Loop index at end
-    if (++index_ >= size_)
-        index_ = 0;
-
-    // Calculate and return the average
-    double sum = 0.0;
-    for (int i = 0; i < size_; ++i)
-        sum += samples_[i];
-    return sum / size_;
 }

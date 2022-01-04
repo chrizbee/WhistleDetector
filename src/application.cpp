@@ -4,7 +4,7 @@
 #include <qmqtt.h>
 
 Application::Application(int &argc, char **argv) :
-    QCoreApplication(argc, argv),
+    QApplication(argc, argv),
     detector_(new Detector(this)),
     client_(new QMQTT::Client(QHostAddress(ConfM.value<QString>("broker")), ConfM.value<int>("port"), this))
 {
@@ -15,13 +15,12 @@ Application::Application(int &argc, char **argv) :
         static const QString subTopic = ConfM.value<QString>("subTopic");
         qInfo() << "MQTT Client connected - subscribing to" << subTopic;
         client_->subscribe(subTopic);
+        qInfo() << "Start recording audio";
+        detector_->start();
     });
 
     // Setup client
     QString clientName = ConfM.value<QString>("clientName");
-#ifdef DEBUG
-    clientName.append("Debugger");
-#endif
     client_->setClientId(clientName);
     client_->setAutoReconnect(true);
     client_->connectToHost();
@@ -51,5 +50,5 @@ void Application::onClientReceived(const QMQTT::Message &message)
     qInfo() << "Turning WhistleDetector" << keyword;
     QMQTT::Message sendMessage(0, pubTopic, keyword.toUtf8());
     client_->publish(sendMessage);
-    detector_->setEnabled(on);
+    on ? detector_->start() : detector_->stop();
 }

@@ -17,7 +17,7 @@ add_compile_definitions(APP_VERSION="${CMAKE_PROJECT_VERSION}")
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-find_package(Qt5 COMPONENTS Core Multimedia Network REQUIRED)
+find_package(Qt5 COMPONENTS Core Widgets Multimedia Network REQUIRED)
 
 # Add executable
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/WhistleDetector)
@@ -25,6 +25,7 @@ add_executable(WhistleDetector
     src/main.cpp
     src/application.h  src/application.cpp
     src/detector.h     src/detector.cpp
+    src/visualizer.h   src/visualizer.cpp
     src/settings.h     src/settings.cpp
 )
 
@@ -32,7 +33,7 @@ add_executable(WhistleDetector
 add_subdirectory(qmqtt)
 target_include_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/include)
 target_link_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/lib)
-target_link_libraries(WhistleDetector PRIVATE Qt5::Core Qt5::Multimedia Qt5::Network qmqtt fftw3)
+target_link_libraries(WhistleDetector PRIVATE Qt5::Core Qt5::Widgets Qt5::Multimedia Qt5::Network qmqtt fftw3)
 
 # Deploy dll's with executable on Windows
 if (WIN32)
