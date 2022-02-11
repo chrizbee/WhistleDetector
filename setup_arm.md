@@ -31,7 +31,7 @@ To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt` and `xte
 I wasn't able to use Alsa with the official Qt-Mulimedia packages since they were built with only one audio backend - which happens to be `pulseaudio`.
 
 ```bash
-sudo apt install qt5-default qtmultimedia5-dev libqt5multimedia5-plugins pulseaudio git libfftw3-dev
+sudo apt install qt5-default qtmultimedia5-dev libqt5multimedia5-plugins pulseaudio git build-essential cmake libfftw3-dev
 ```
 
 Enable the `pulseaudio` service and reboot.
@@ -126,3 +126,5 @@ systemctl --user enable whistledetector
 ```
 
 Autologin as user `chrizbee` to start `whistledetector.service` automatically. You could also setup the whole guide systemwide, but it's not recommended to run `pulseaudio` systemwide.
+
+See: https://forum.armbian.com/topic/1903-autologin-to-armbian-console/
