@@ -48,7 +48,7 @@ void Application::onClientReceived(const QMQTT::Message &message)
     bool on = payload.contains("ON") ? true : false;
     QString keyword = on ? "ON" : "OFF";
     qInfo() << "Turning WhistleDetector" << keyword;
-    QMQTT::Message sendMessage(0, pubTopic, keyword.toUtf8(), 0, true);
+    QMQTT::Message sendMessage(0, pubTopic, keyword.toUtf8());
     client_->publish(sendMessage);
     on ? detector_->start() : detector_->stop();
 }
