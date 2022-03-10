@@ -8,12 +8,9 @@ typedef QApplication QApp;
 #include <QCoreApplication>
 typedef QCoreApplication QApp;
 #endif
+#include <QNetworkAccessManager>
 
 class Detector;
-namespace QMQTT {
-    class Client;
-    class Message;
-}
 
 class Application : public QApp
 {
@@ -25,11 +22,10 @@ public:
 
 private slots:
     void onPatternDetected();
-    void onClientReceived(const QMQTT::Message &message);
 
 private:
     Detector *detector_;
-    QMQTT::Client *client_;
+    QNetworkAccessManager *manager_;
 };
 
 #endif // APPLICATION_H

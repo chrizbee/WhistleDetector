@@ -33,10 +33,9 @@ add_executable(WhistleDetector
 )
 
 # Add and link dependencies
-add_subdirectory(qmqtt)
 target_include_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/include)
 target_link_directories(WhistleDetector PRIVATE $ENV{CONDA_PREFIX}/lib)
-target_link_libraries(WhistleDetector PRIVATE Qt5::Core Qt5::Multimedia Qt5::Network qmqtt fftw3)
+target_link_libraries(WhistleDetector PRIVATE Qt5::Core Qt5::Multimedia Qt5::Network fftw3)
 if (VISUALIZE)
     target_link_libraries(WhistleDetector PRIVATE Qt5::Widgets)
     target_compile_definitions(WhistleDetector PRIVATE VISUALIZE)
