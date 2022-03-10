@@ -26,7 +26,7 @@ sudo usermod -aG sudo,audio chrizbee
 
 ## Install dependencies
 
-To build this application, you will need `Qt5`, `QtMultimedia`, `QMqtt` and `xtensor-fftw`.
+To build this application, you will need `Qt5`, `QtMultimedia`, `Qt5Network` and `xtensor-fftw`.
 
 I wasn't able to use Alsa with the official Qt-Mulimedia packages since they were built with only one audio backend - which happens to be `pulseaudio`.
 
@@ -75,12 +75,6 @@ Clone the GitHub repository.
 ```bash
 git clone https://github.com/chrizbee/WhistleDetector
 cd WhistleDetector
-```
-
-Clone the `QMqtt` GitHub repository inside `WhistleDetector`.
-
-```bash
-git clone https://github.com/emqx/qmqtt
 ```
 
 Build it using `cmake`. Make sure `CONDA_PREFIX` is set before building.
