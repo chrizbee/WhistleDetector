@@ -3,12 +3,17 @@
 #include <arduinoFFT.h>
 #include <driver/i2s.h>
 #include <numeric>
+#include <algorithm>
+#include <iterator>
 
 // Configuration
-constexpr int PAUSE_MS        = 300; // Pause between whistles in ms
-constexpr int MAX_DELTA_F     = 150; // Tolerance for whistle frequencies in Hz
-constexpr int MAX_DELTA_T     = 150; // Tolerance for pause between whistles in ms
-constexpr float MAX_TO_MEAN   = 8;   // Peak amplitude / mean amplitude must be above this value
+constexpr int PAUSE_MS         = 300;  // Pause between whistles in ms
+constexpr int MAX_DELTA_FREQ   = 150;  // Tolerance for whistle frequencies in Hz
+constexpr int MAX_DELTA_TIME   = 150;  // Tolerance for pause between whistles in ms
+constexpr float START_FREQ     = 1000; // Lower frequency limit
+constexpr float END_FREQ       = 2000; // Upper frequency limit
+constexpr float PEAK_THRESHOLD = 1e8;  // Peakmplitude threshold
+constexpr float PEAK_TO_MEAN   = 8;    // Peak amplitude / mean amplitude must be above this value
 
 // Whistle frequency sequence in Hz
 // First is absolute; following are relative to measured first value
@@ -34,6 +39,7 @@ ArduinoFFT<float> fft = ArduinoFFT<float>(vReal, vImag, BUFFER_SIZE, SAMPLE_RATE
 // Function declarations
 void setup();
 void loop();
+void calculatePeak(float *data, int sampleCount, float sampleRate, float startHz, float endHz, float *frequency, float *amplitude);
 
 // Function implementations
 void setup()
@@ -105,13 +111,25 @@ void loop()
 
     // Get frequency, peak / mean amplitude and budget snr
     float frequency, peakAmplitude;
-    fft.majorPeak(&frequency, &peakAmplitude);
+    calculatePeak(vReal, BUFFER_SIZE, SAMPLE_RATE, START_FREQ, END_FREQ, &frequency, &peakAmplitude);
     float meanAmplitude = std::accumulate(std::begin(vReal), std::end(vReal), 0.0f) / BUFFER_SIZE;
     float peakToMean = peakAmplitude / meanAmplitude;
 
-    Serial.printf("F: %.2f, Peak: %.2f, Mean: %.2f, P/M: %.2f\n", frequency, peakAmplitude, meanAmplitude, peakToMean);
+    // Serial plotter
+    // Serial.print("Peak:");
+    // Serial.print(peakAmplitude);
+    // Serial.print(",");
+    // Serial.print("Ratio:");
+    // Serial.print(peakToMean);
+    // Serial.print(",");
+    // Serial.print("Mean:");
+    // Serial.println(meanAmplitude);
 
-    // Check for index out of range
+    // Check if thresholds are exceeded
+    if (peakAmplitude < PEAK_THRESHOLD || peakToMean < PEAK_TO_MEAN)
+        return;
+
+    // Check for index in range
     if (sequenceIndex >= SEQUENCE_LEN)
         return;
 
@@ -121,11 +139,9 @@ void loop()
     // TODO: int deltaT = abs(timer_.remainingTime() - maxDeltaT);
     float deltaTime = 0.0;
 
-    Serial.printf("Expected: %.2f, Delta: %.2f\n", expectedFrequency, deltaFrequency);
-
     // First frequency will be more forgiving
-    if ((sequenceIndex == 0 && deltaFrequency <= MAX_DELTA_F * 1.5) ||
-        (deltaFrequency <= MAX_DELTA_F && deltaTime <= MAX_DELTA_T)) {
+    if ((sequenceIndex == 0 && deltaFrequency <= MAX_DELTA_FREQ * 1.5) ||
+        (deltaFrequency <= MAX_DELTA_FREQ && deltaTime <= MAX_DELTA_TIME)) {
 
         // Set last frequency to this one
         // First measured frequency will be the base for all upcoming
@@ -142,5 +158,47 @@ void loop()
         } else {
             // TODO: Restart timer
         }
+    }
+}
+
+void calculatePeak(float *data, int sampleCount, float sampleRate, float startHz, float endHz, float *frequency, float *amplitude)
+{
+    // Calculate frequency resolution
+    float frequencyResolution = sampleRate / sampleCount;
+
+    // Define the range in terms of indices
+    int startIndex = (startHz == -1) ? 0 : std::max(0, static_cast<int>(std::ceil(startHz / frequencyResolution)));
+    int endIndex = (endHz == -1) ? (sampleCount / 2) : std::min(sampleCount / 2, static_cast<int>(std::floor(endHz / frequencyResolution)));
+
+    // Ensure valid range
+    if (startIndex >= endIndex) {
+        *frequency = 0;
+        *amplitude = 0;
+        return;
+    }
+
+    // Find the maximum in the specified range
+    auto maxElementIter = std::max_element(data + startIndex, data + endIndex);
+    int maxIndex = std::distance(data, maxElementIter);
+
+    // Calculate interpolated peak (parabolic interpolation for better accuracy)
+    if (maxIndex > 0 && maxIndex < (sampleCount / 2) - 1) {
+        float y0 = data[maxIndex - 1];
+        float y1 = data[maxIndex];
+        float y2 = data[maxIndex + 1];
+        
+        // Calculate the parabolic offset
+        float delta = 0.5f * (y0 - y2) / (y0 - 2.0f * y1 + y2);
+
+        // Interpolated frequency
+        *frequency = (maxIndex + delta) * frequencyResolution;
+
+        // Interpolated amplitude (magnitude)
+        *amplitude = std::abs(y1 - (y0 - y2) * delta / 2.0f);
+    
+    // Edge case: no interpolation possible
+    } else {
+        *frequency = maxIndex * frequencyResolution;
+        *amplitude = std::abs(*maxElementIter);
     }
 }
