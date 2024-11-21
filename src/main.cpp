@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <iterator>
 
+// Defines and macros
+// #define DEBUG_PRINT
+
 // Configuration
 constexpr int PAUSE_MS         = 300;  // Pause between whistles in ms
 constexpr int MAX_DELTA_FREQ   = 150;  // Tolerance for whistle frequencies in Hz
@@ -16,7 +19,7 @@ constexpr float PEAK_THRESHOLD = 1e8;  // Peakmplitude threshold
 constexpr float PEAK_TO_MEAN   = 8;    // Peak amplitude / mean amplitude must be above this value
 
 // Whistle frequency sequence in Hz
-// First is absolute; following are relative to measured first value
+// First is absolute; following are relative to first valid value
 const float SEQUENCE[] = { 1800, -400, +400 };
 const int SEQUENCE_LEN = sizeof(SEQUENCE) / sizeof(SEQUENCE[0]);
 
@@ -34,7 +37,8 @@ float vReal[BUFFER_SIZE];
 float vImag[BUFFER_SIZE];
 int sequenceIndex = 0;
 float lastFrequency = 0.0f;
-ArduinoFFT<float> fft = ArduinoFFT<float>(vReal, vImag, BUFFER_SIZE, SAMPLE_RATE, false); // windowingFactors: internal storage of the windowing factors
+unsigned long lastTime = 0;
+ArduinoFFT<float> fft = ArduinoFFT<float>(vReal, vImag, BUFFER_SIZE, SAMPLE_RATE, false); // (..., windowingFactors) : internal storage of the windowing factors
 
 // Function declarations
 void setup();
@@ -82,11 +86,12 @@ void setup()
 
     // Configuring the I2S driver and pins.
     // This function must be called before any I2S driver read/write operations.
-    bool success = false;
+    bool micInitialized = false;
     if (i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL) == ESP_OK)
         if (i2s_set_pin(I2S_PORT, &pin_config) == ESP_OK)
-            success = true;
-    Serial.println(success ? "I2S driver installed" : "Failed installing I2S driver!");
+            micInitialized = true;
+    Serial.println(micInitialized ? "I2S driver installed" : "Failed installing I2S driver!");
+    while (!micInitialized);
 }
 
 void loop()
@@ -95,6 +100,19 @@ void loop()
     size_t bytesRead = 0;
     i2s_read(I2S_NUM_0, sampleBuffer, sizeof(int32_t) * BUFFER_SIZE, &bytesRead, portMAX_DELAY);
     int samplesRead = bytesRead / sizeof(int32_t);
+
+    // Check if enough time has passed already
+    unsigned long currentTime = millis();
+    unsigned long elapsed = currentTime - lastTime;
+    if (elapsed < PAUSE_MS - MAX_DELTA_TIME)
+        return;
+    
+    // Reset if too much time has passed
+    // This won't matter if it's the first frequency in sequence
+    if (elapsed > PAUSE_MS + MAX_DELTA_TIME) {
+        lastFrequency = 0.0;
+        sequenceIndex = 0;
+    }
 
     // Fill real and complex arrays
     for (int i = 0; i < BUFFER_SIZE; ++i) {
@@ -116,14 +134,16 @@ void loop()
     float peakToMean = peakAmplitude / meanAmplitude;
 
     // Serial plotter
-    // Serial.print("Peak:");
-    // Serial.print(peakAmplitude);
-    // Serial.print(",");
-    // Serial.print("Ratio:");
-    // Serial.print(peakToMean);
-    // Serial.print(",");
-    // Serial.print("Mean:");
-    // Serial.println(meanAmplitude);
+#ifdef DEBUG_PRINT
+    Serial.print("Peak:");
+    Serial.print(peakAmplitude);
+    Serial.print(",");
+    Serial.print("Ratio:");
+    Serial.print(peakToMean);
+    Serial.print(",");
+    Serial.print("Mean:");
+    Serial.println(meanAmplitude);
+#endif // DEBUG_PRINT
 
     // Check if thresholds are exceeded
     if (peakAmplitude < PEAK_THRESHOLD || peakToMean < PEAK_TO_MEAN)
@@ -136,8 +156,7 @@ void loop()
     // Get delta values
     float expectedFrequency = lastFrequency + SEQUENCE[sequenceIndex];
     float deltaFrequency = abs(frequency - expectedFrequency);
-    // TODO: int deltaT = abs(timer_.remainingTime() - maxDeltaT);
-    float deltaTime = 0.0;
+    int deltaTime = abs(PAUSE_MS - (int)elapsed);
 
     // First frequency will be more forgiving
     if ((sequenceIndex == 0 && deltaFrequency <= MAX_DELTA_FREQ * 1.5) ||
@@ -148,16 +167,11 @@ void loop()
         lastFrequency = sequenceIndex == 0 ? frequency : expectedFrequency;
 
         // Check if end of pattern is reached
-        if (++sequenceIndex >= SEQUENCE_LEN) {
-            sequenceIndex = 0;
-            lastFrequency = 0.0;
-            // TODO: Stop timer
+        if (++sequenceIndex >= SEQUENCE_LEN)
             Serial.println("PATTERN DETECTED!");
         
-        // Else restart timer
-        } else {
-            // TODO: Restart timer
-        }
+        // Else store current time
+        else lastTime = currentTime;
     }
 }
 
