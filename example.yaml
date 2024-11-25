@@ -1,0 +1,59 @@
+esphome:
+  name: whistledetector
+  platformio_options:
+    board_build.partitions: default.csv
+    build_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=1"
+      - "-DBOARD_HAS_PSRAM"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 4MB
+  variant: ESP32S3
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  - platform: esphome
+    password: ""
+
+wifi:
+  ssid: "Your WiFi SSID"
+  password: "VerySafePassword"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Whistledetector Fallback"
+    password: "dR2FudTwNtWF"
+
+captive_portal:
+
+# WhistleDetector stuff --> 
+external_components:
+  - source: components
+
+binary_sensor:
+  - platform: whistle_detector
+    id: wd
+    name: "Whistle Detector"
+    sequence: [1800, -400, 400]  # Sequence of whistle frequencies
+    pause_ms: 300                # Time between whistles in ms
+    max_delta_freq: 150          # Tolerance for whistle frequencies in Hz
+    max_delta_time: 150          # Tolerance for pause between whistles in ms
+    peak_threshold: 1e8          # Peak amplitude threshold
+    peak_to_mean: 8.0            # Ratio of peak amplitude to mean amplitude
+    start_freq: 1000.0           # Lower frequency limit
+    end_freq: 2000.0             # Upper frequency limit
+    sample_rate: 8000            # Sampling rate for I2S microphone
+    buffer_size: 512             # Buffer size for FFT calculation
+    pin_i2s_ws: 11               # I2S WS pin
+    pin_i2s_sck: 12              # I2S SCK pin
+    pin_i2s_sd: 13               # I2S SD pin
+    i2s_port: I2S_NUM_0          # I2S port

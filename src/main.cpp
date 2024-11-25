@@ -2,6 +2,7 @@
 #include <WiFiManager.h>
 #include <arduinoFFT.h>
 #include <driver/i2s.h>
+#include <vector>
 #include <numeric>
 #include <algorithm>
 #include <iterator>
@@ -20,8 +21,7 @@ constexpr float PEAK_TO_MEAN   = 8;    // Peak amplitude / mean amplitude must b
 
 // Whistle frequency sequence in Hz
 // First is absolute; following are relative to first valid value
-const float SEQUENCE[] = { 1800, -400, +400 };
-const int SEQUENCE_LEN = sizeof(SEQUENCE) / sizeof(SEQUENCE[0]);
+const std::vector<float> SEQUENCE = { 1800, -400, +400 };
 
 // Pins, I2S and FFT
 constexpr int PIN_I2S_WS      = GPIO_NUM_11;
@@ -84,8 +84,8 @@ void setup()
         .data_in_num    = PIN_I2S_SD
     };
 
-    // Configuring the I2S driver and pins.
-    // This function must be called before any I2S driver read/write operations.
+    // Configuring the I2S driver and pins
+    // This function must be called before any I2S driver read/write operations
     bool micInitialized = false;
     if (i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL) == ESP_OK)
         if (i2s_set_pin(I2S_PORT, &pin_config) == ESP_OK)
@@ -98,7 +98,7 @@ void loop()
 {
     // Read samples from I2S microphone
     size_t bytesRead = 0;
-    i2s_read(I2S_NUM_0, sampleBuffer, sizeof(int32_t) * BUFFER_SIZE, &bytesRead, portMAX_DELAY);
+    i2s_read(I2S_PORT, sampleBuffer, sizeof(int32_t) * BUFFER_SIZE, &bytesRead, portMAX_DELAY);
     int samplesRead = bytesRead / sizeof(int32_t);
 
     // Check if enough time has passed already
@@ -150,7 +150,7 @@ void loop()
         return;
 
     // Check for index in range
-    if (sequenceIndex >= SEQUENCE_LEN)
+    if (sequenceIndex >= SEQUENCE.size())
         return;
 
     // Get delta values
@@ -167,7 +167,7 @@ void loop()
         lastFrequency = sequenceIndex == 0 ? frequency : expectedFrequency;
 
         // Check if end of pattern is reached
-        if (++sequenceIndex >= SEQUENCE_LEN)
+        if (++sequenceIndex >= SEQUENCE.size())
             Serial.println("PATTERN DETECTED!");
         
         // Else store current time
