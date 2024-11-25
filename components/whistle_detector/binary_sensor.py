@@ -14,6 +14,7 @@ CONF_PEAK_THRESHOLD = "peak_threshold"
 CONF_PEAK_TO_MEAN = "peak_to_mean"
 CONF_START_FREQ = "start_freq"
 CONF_END_FREQ = "end_freq"
+CONF_RESET_TIME = "reset_time"
 CONF_SAMPLE_RATE = "sample_rate"
 CONF_BUFFER_SIZE = "buffer_size"
 CONF_PIN_I2S_WS = "pin_i2s_ws"
@@ -34,6 +35,7 @@ CONFIG_SCHEMA = binary_sensor.binary_sensor_schema(WhistleDetector).extend({
     cv.Required(CONF_PEAK_TO_MEAN): cv.float_,
     cv.Required(CONF_START_FREQ): cv.float_,
     cv.Required(CONF_END_FREQ): cv.float_,
+    cv.Required(CONF_RESET_TIME): cv.int_,
     cv.Optional(CONF_SAMPLE_RATE, default=8000): cv.int_,
     cv.Optional(CONF_BUFFER_SIZE, default=512): cv.int_,
     cv.Optional(CONF_PIN_I2S_WS, default=11): cv.int_,
@@ -54,6 +56,7 @@ async def to_code(config):
     cg.add(var.set_peak_to_mean(config[CONF_PEAK_TO_MEAN]))
     cg.add(var.set_start_freq(config[CONF_START_FREQ]))
     cg.add(var.set_end_freq(config[CONF_END_FREQ]))
+    cg.add(var.set_reset_time(config[CONF_RESET_TIME]))
     cg.add(var.set_sample_rate(config[CONF_SAMPLE_RATE]))
     cg.add(var.set_buffer_size(config[CONF_BUFFER_SIZE]))
     cg.add(var.set_i2s_pins(config[CONF_PIN_I2S_WS], config[CONF_PIN_I2S_SCK], config[CONF_PIN_I2S_SD]))

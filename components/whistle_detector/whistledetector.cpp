@@ -45,10 +45,12 @@ void WhistleDetector::setup()
     // Last parameter (false) = windowingFactors: internal storage of the windowing factors?
     fft_ = ArduinoFFT<float>(v_real_.data(), v_imag_.data(), buffer_size_, sample_rate_, false);
 
-    // Initialize sequence variables to 0
+    // Initialize variables
+    pattern_detected_ = false;
     sequence_index_ = 0;
     last_frequency_ = 0.0f;
     last_time_ = 0;
+    last_detection_time_ = 0;
     publish_initial_state(false);
 }
 
@@ -61,8 +63,14 @@ void WhistleDetector::loop()
     if (samples_read < buffer_size_)
         return;
 
-    // Check if enough time has passed already
+    // Reset switch state after some time
     unsigned long current_time = millis();
+    if (pattern_detected_ && (current_time - last_detection_time_ > reset_time_)) {
+        pattern_detected_ = false;
+        this->publish_state(false);
+    }
+    
+    // Check if enough time has passed already
     unsigned long elapsed = current_time - last_time_;
     if (elapsed < pause_ms_ - max_delta_time_)
         return;
@@ -73,6 +81,7 @@ void WhistleDetector::loop()
         last_frequency_ = 0.0;
         sequence_index_ = 0;
     }
+
 
     // Fill real and complex arrays
     for (int i = 0; i < buffer_size_; ++i) {
@@ -117,6 +126,8 @@ void WhistleDetector::loop()
         // Check if end of pattern is reached
         if (++sequence_index_ >= sequence_.size()) {
             this->publish_state(true);
+            last_detection_time_ = current_time;
+            pattern_detected_ = true;
             sequence_index_ = 0;
         
         // Else store current time

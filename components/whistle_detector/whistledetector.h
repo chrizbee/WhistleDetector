@@ -21,6 +21,7 @@ public:
     void set_peak_to_mean(float peak_to_mean) { peak_to_mean_ = peak_to_mean; }
     void set_start_freq(float start_freq) { start_freq_ = start_freq; }
     void set_end_freq(float end_freq) { end_freq_ = end_freq; }
+    void set_reset_time(int reset_time) { reset_time_ = reset_time; }
     void set_sample_rate(uint32_t sample_rate) { sample_rate_ = sample_rate; }
     void set_buffer_size(int buffer_size) { buffer_size_ = buffer_size; }
     void set_i2s_pins(int ws, int sck, int sd) { pin_i2s_ws_ = ws; pin_i2s_sck_ = sck; pin_i2s_sd_ = sd; }
@@ -39,6 +40,8 @@ protected:
         float *frequency, float *amplitude
     );
 
+    bool pattern_detected_;
+
     // Sequence configuration and thresholds
     std::vector<float> sequence_;
     int pause_ms_;
@@ -48,6 +51,7 @@ protected:
     float peak_to_mean_;
     float start_freq_;
     float end_freq_;
+    int reset_time_;
 
     // Audio and I2S configuration
     uint32_t sample_rate_;
@@ -65,6 +69,7 @@ protected:
     uint32_t sequence_index_;
     float last_frequency_;
     unsigned long last_time_;
+    unsigned long last_detection_time_;
 };
 
 }  // namespace whistle_detector
