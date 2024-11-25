@@ -9,6 +9,8 @@
 
 // Defines and macros
 // #define DEBUG_PRINT
+#define SEL_LEFT   LOW
+#define SEL_RIGHT  HIGH
 
 // Configuration
 constexpr int PAUSE_MS         = 300;  // Pause between whistles in ms
@@ -24,9 +26,11 @@ constexpr float PEAK_TO_MEAN   = 8;    // Peak amplitude / mean amplitude must b
 const std::vector<float> SEQUENCE = { 1800, -400, +400 };
 
 // Pins, I2S and FFT
-constexpr int PIN_I2S_WS      = GPIO_NUM_11;
-constexpr int PIN_I2S_SCK     = GPIO_NUM_12;
-constexpr int PIN_I2S_SD      = GPIO_NUM_13;
+constexpr int PIN_I2S_WS      = GPIO_NUM_7; // GPIO_NUM_11;
+constexpr int PIN_I2S_SCK     = GPIO_NUM_8; // GPIO_NUM_12;
+constexpr int PIN_I2S_SD      = GPIO_NUM_4; // GPIO_NUM_13;
+constexpr int PIN_I2S_LR      = GPIO_NUM_6; // -;
+constexpr int I2S_CHAN_SEL    = SEL_RIGHT; 
 constexpr i2s_port_t I2S_PORT = I2S_NUM_0;
 constexpr int SAMPLE_RATE     = 8000;
 constexpr int BUFFER_SIZE     = 512;
@@ -61,12 +65,16 @@ void setup()
     // Initialize mic
     Serial.println("Initialize I2S mems microphone");
 
+    // Pullup / -down for channel select
+    pinMode(PIN_I2S_LR, OUTPUT);
+    digitalWrite(PIN_I2S_LR, I2S_CHAN_SEL);
+
     // I2S config
     const i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
         .sample_rate = SAMPLE_RATE,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .channel_format = I2S_CHAN_SEL == SEL_RIGHT ? I2S_CHANNEL_FMT_ONLY_RIGHT : I2S_CHANNEL_FMT_ONLY_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
         .dma_buf_count = 4,
